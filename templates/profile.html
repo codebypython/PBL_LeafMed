@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Thông tin tài khoản</h2>
+    <table>
+      <tr>
+        <th>Tên đăng nhập:</th>
+        <td>{{ user.username }}</td>
+      </tr>
+      <tr>
+        <th>Email:</th>
+        <td>{{ user.email|default:"Chưa có" }}</td>
+      </tr>
+      <tr>
+        <th>Họ:</th>
+        <td>{{ user.first_name|default:"Chưa có" }}</td>
+      </tr>
+      <tr>
+        <th>Tên:</th>
+        <td>{{ user.last_name|default:"Chưa có" }}</td>
+      </tr>
+      <tr>
+        <th>Ngày tham gia:</th>
+        <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
+      </tr>
+      <tr>
+        <th>Tổng số lần tra cứu:</th>
+        <td>{{ user.captures.count }}</td>
+      </tr>
+    </table>
+    <div style="margin-top:16px;">
+      <a href="{% url 'edit_profile' %}" class="btn">Chỉnh sửa thông tin</a>
+    </div>
+  </div>
+{% endblock %}

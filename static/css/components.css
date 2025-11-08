@@ -1,0 +1,88 @@
+/* static/css/components.css */
+/* Additional component styles */
+
+/* Badge */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .badge-success {
+    background: var(--success);
+    color: white;
+  }
+  
+  .badge-danger {
+    background: var(--danger);
+    color: white;
+  }
+  
+  .badge-info {
+    background: var(--info);
+    color: white;
+  }
+  
+  /* Stats Cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .stat-card {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: var(--spacing-xl);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+  }
+  
+  /* Plant Detail */
+  .plant-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: var(--spacing-xl);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .plant-scientific {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    font-style: italic;
+    margin-top: var(--spacing-sm);
+  }
+  
+  .info-section {
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .info-section h3 {
+    color: var(--primary);
+    margin-bottom: var(--spacing-md);
+    font-size: 1.3rem;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: var(--spacing-sm);
+  }
+  
+  .info-section p {
+    line-height: 1.8;
+    color: var(--text-secondary);
+  }

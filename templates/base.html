@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PBL LeafMed - Hệ thống nhận diện thực vật{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <a href="{% url 'home' %}" class="nav-brand">
+                PBL LeafMed
+            </a>
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'home' %}" class="btn btn-outline btn-sm">Trang chủ</a>
+                    <a href="{% url 'search' %}" class="btn btn-primary btn-sm">Tra cứu</a>
+                    <a href="{% url 'history' %}" class="btn btn-secondary btn-sm">Lịch sử</a>
+                {% endif %}
+            </div>
+            <div class="nav-user">
+                {% if user.is_authenticated %}
+                    <span class="user-greeting">Xin chào, <strong>{{ user.username }}</strong></span>
+                    <a href="{% url 'profile' %}" class="btn btn-secondary btn-sm">Tài khoản</a>
+                    <a href="{% url 'logout' %}" class="btn btn-danger btn-sm">Đăng xuất</a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-secondary btn-sm">Đăng nhập</a>
+                    <a href="{% url 'register' %}" class="btn btn-primary btn-sm">Đăng ký</a>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- Messages -->
+        <div class="messages">
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                  <button class="alert-close" type="button" aria-label="Đóng">×</button>
+                  {% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}❌{% elif message.tags == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+                  {{ message }}
+                </div>
+              {% endfor %}
+            {% endif %}
+          </div>
+
+        <!-- Content -->
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/utils.js' %}"></script>
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

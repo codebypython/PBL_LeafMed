@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Chỉnh sửa thông tin tài khoản</h2>
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Tên đăng nhập:</label>
+        {{ form.username }}
+        {% if form.username.errors %}
+          <div style="color:#dc2626; font-size:14px;">{{ form.username.errors }}</div>
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>Email:</label>
+        {{ form.email }}
+        {% if form.email.errors %}
+          <div style="color:#dc2626; font-size:14px;">{{ form.email.errors }}</div>
+        {% endif %}
+      </div>
+      <div class="form-group">
+        <label>Họ:</label>
+        {{ form.first_name }}
+      </div>
+      <div class="form-group">
+        <label>Tên:</label>
+        {{ form.last_name }}
+      </div>
+      <button type="submit" class="btn">Lưu thay đổi</button>
+      <a href="{% url 'profile' %}" class="btn secondary">Hủy</a>
+    </form>
+  </div>
+{% endblock %}

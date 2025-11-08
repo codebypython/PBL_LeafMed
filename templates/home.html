@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Chào mừng đến với PBL LeafMed</h1>
+        <p class="card-subtitle">Hệ thống nhận diện và tra cứu thông tin thực vật thông minh</p>
+    </div>
+    
+    {% if user.is_authenticated %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ user.captures.count }}</div>
+                <div class="stat-label">Lần tra cứu</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ user.captures.count|floatformat:0 }}</div>
+                <div class="stat-label">Kết quả đã lưu</div>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 2rem;">
+            <a href="{% url 'search' %}" class="btn btn-primary btn-lg">
+                🔍 Bắt đầu tra cứu
+            </a>
+            <a href="{% url 'history' %}" class="btn btn-secondary btn-lg">
+                📚 Xem lịch sử
+            </a>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 3rem 0;">
+            <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 2rem;">
+                Đăng nhập để sử dụng đầy đủ các tính năng
+            </p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="{% url 'register' %}" class="btn btn-primary btn-lg">Đăng ký ngay</a>
+                <a href="{% url 'login' %}" class="btn btn-outline btn-lg">Đăng nhập</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <div class="plant-header">
+      <h2>{{ plant.name }}</h2>
+      {% if plant.scientific_name %}
+        <div class="plant-scientific">{{ plant.scientific_name }}</div>
+      {% endif %}
+    </div>
+
+    <div class="info-section">
+      {% if plant.biological_info %}
+        <h3>Thông tin sinh học</h3>
+        <p>{{ plant.biological_info|linebreaks }}</p>
+      {% endif %}
+      {% if plant.medicinal_info %}
+        <h3>Thông tin dược học</h3>
+        <p>{{ plant.medicinal_info|linebreaks }}</p>
+      {% endif %}
+    </div>
+
+    <h3>Ảnh đã chụp gần đây</h3>
+    {% if recent_captures %}
+      <div class="grid">
+        {% for cap in recent_captures %}
+        <div class="thumb-card">
+          {% if cap.local_image %}
+            <img class="thumb-image" src="{{ cap.local_image.url }}" alt="">
+          {% else %}
+            <img class="thumb-image" src="{{ pi_base }}/history/image/{{ cap.image_file }}" alt="">
+          {% endif %}
+          <div class="thumb-body">
+            <div class="thumb-title">{{ cap.created_at|date:"Y-m-d H:i" }} — {{ cap.confidence|floatformat:3 }}</div>
+            {% if cap.local_image %}
+              <a class="btn btn-secondary btn-sm" href="{{ cap.local_image.url }}" target="_blank">Mở ảnh</a>
+            {% elif cap.image_file %}
+              <a class="btn btn-secondary btn-sm" href="{{ pi_base }}/history/image/{{ cap.image_file }}" target="_blank">Mở ảnh</a>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+      </div>
+    {% else %}
+      <p>Chưa có kết quả tra cứu nào được lưu.</p>
+    {% endif %}
+  </div>
+{% endblock %}

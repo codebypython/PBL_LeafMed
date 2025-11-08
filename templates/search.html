@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Tra cứu thực vật</h1>
+        <p class="card-subtitle">Xem luồng video trực tiếp từ camera hoặc tải ảnh từ máy tính để nhận diện</p>
+    </div>
+    
+    <!-- Tabs để chuyển đổi giữa Camera và Upload -->
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color);">
+        <button class="tab-btn active" onclick="showTab('camera')" id="tab-camera">📹 Camera</button>
+        <button class="tab-btn" onclick="showTab('upload')" id="tab-upload">📁 Tải ảnh lên</button>
+    </div>
+    
+    <!-- Tab Camera -->
+    <div id="camera-tab" class="tab-content">
+        <div class="stream-container">
+            <div class="stream-wrapper">
+                <img src="{{ stream_url }}" alt="Pi Stream" class="stream-image" id="streamImage">
+                <div class="stream-overlay">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+        
+        <form method="post" action="{% url 'capture' %}" style="text-align: center; margin-top: 1rem;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-lg">
+                📸 Chụp ảnh và phân tích
+            </button>
+        </form>
+    </div>
+    
+    <!-- Tab Upload -->
+    <div id="upload-tab" class="tab-content" style="display: none;">
+        <div class="upload-container">
+            <form method="post" action="{% url 'upload_analyze' %}" enctype="multipart/form-data" id="uploadForm">
+                {% csrf_token %}
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" name="image" id="imageInput" accept="image/jpeg,image/jpg,image/png,image/webp" required style="display: none;">
+                    <div class="upload-placeholder">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📷</div>
+                        <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">Kéo thả ảnh vào đây hoặc click để chọn</p>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">Hỗ trợ: JPG, PNG, WebP (tối đa 10MB)</p>
+                    </div>
+                    <img id="previewImage" style="display: none; max-width: 100%; max-height: 400px; border-radius: var(--border-radius-sm); margin-top: 1rem;">
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn" disabled>
+                        🔍 Phân tích ảnh
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Handle stream image errors
+    document.getElementById('streamImage').addEventListener('error', function() {
+        this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle" fill="%23999"%3EStream không khả dụng%3C/text%3E%3C/svg%3E';
+    });
+    
+    // Tab switching
+    function showTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Show selected tab
+        document.getElementById(tabName + '-tab').style.display = 'block';
+        document.getElementById('tab-' + tabName).classList.add('active');
+    }
+    
+    // Upload functionality
+    const uploadArea = document.getElementById('uploadArea');
+    const imageInput = document.getElementById('imageInput');
+    const previewImage = document.getElementById('previewImage');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadForm = document.getElementById('uploadForm');
+    
+    // Click to select file
+    uploadArea.addEventListener('click', () => {
+        imageInput.click();
+    });
+    
+    // Drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--primary)';
+        uploadArea.style.background = 'rgba(212, 175, 55, 0.05)';
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.borderColor = 'var(--border-color)';
+        uploadArea.style.background = 'var(--bg-primary)';
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--border-color)';
+        uploadArea.style.background = 'var(--bg-primary)';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type.startsWith('image/')) {
+            imageInput.files = files;
+            handleFileSelect(files[0]);
+        }
+    });
+    
+    // File input change
+    imageInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+    
+    function handleFileSelect(file) {
+        // Validate file
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Chỉ chấp nhận file ảnh: JPG, PNG, WebP');
+            return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File ảnh quá lớn (tối đa 10MB)');
+            return;
+        }
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImage.src = e.target.result;
+            previewImage.style.display = 'block';
+            document.querySelector('.upload-placeholder').style.display = 'none';
+            uploadBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+    }
+</script>
+{% endblock %}

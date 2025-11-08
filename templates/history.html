@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Danh sách tra cứu đã lưu</h2>
+    
+    {% if results %}
+      <table>
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Tên cây</th>
+            <th>Độ tin cậy</th>
+            <th>Ảnh</th>
+            <th>Chi tiết</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+            <tr>
+              <td>{{ r.created_at|date:"Y-m-d H:i:s" }}</td>
+              <td>
+                {% if r.plant %}
+                  <a href="{% url 'plant_detail' r.plant.id %}">{{ r.plant.name }}</a>
+                {% else %}
+                  {{ r.name }}
+                {% endif %}
+              </td>
+              <td>{{ r.confidence|floatformat:3 }}</td>
+              <td>
+                {% if r.local_image %}
+                  <a href="{{ r.local_image.url }}" target="_blank">
+                    <img src="{{ r.local_image.url }}" alt="" style="max-width:100px; height:auto;">
+                  </a>
+                {% elif r.image_file %}
+                  <a href="{{ pi_base }}/history/image/{{ r.image_file }}" target="_blank">
+                    <img src="{{ pi_base }}/history/image/{{ r.image_file }}" alt="{{ r.image_file }}" style="max-width:100px; height:auto;">
+                  </a>
+                {% else %}-{% endif %}
+              </td>
+              <td>
+                {% if r.plant %}
+                  <a class="btn secondary" href="{% url 'plant_detail' r.plant.id %}">Xem chi tiết</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Chưa có kết quả tra cứu nào được lưu.</p>
+    {% endif %}
+  </div>
+{% endblock %}
