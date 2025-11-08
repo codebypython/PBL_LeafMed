@@ -4,8 +4,8 @@
 
 Sau khi đáp ứng được môi trường cần thiết hãy làm theo các bước sau
 
-python -m venv .venv
-.venv\Scripts\activate 
+- python -m venv .venv
+- .venv\Scripts\activate 
 
 #thay đổi file ..._requirements.txt thành "requirement.txt" và sử dụng nó
 - pip install -r requirements.txt
