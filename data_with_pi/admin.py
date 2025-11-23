@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Plant, CaptureResult
+from .models import Plant, CaptureResult, UserCameraPreset
 
 @admin.register(Plant)
 class PlantAdmin(admin.ModelAdmin):
@@ -25,4 +25,22 @@ class CaptureResultAdmin(admin.ModelAdmin):
     def get_plant_name(self, obj):
         """Hiển thị tên plant thay vì object"""
         return obj.plant.name if obj.plant else '-'
-    get_plant_name.short_description = 'Plant' 
+    get_plant_name.short_description = 'Plant'
+
+@admin.register(UserCameraPreset)
+class UserCameraPresetAdmin(admin.ModelAdmin):
+    list_display = ('name', 'user', 'is_default', 'created_at', 'updated_at')
+    list_filter = ('is_default', 'created_at', 'user')
+    search_fields = ('name', 'user__username')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Thông tin cơ bản', {
+            'fields': ('user', 'name', 'is_default')
+        }),
+        ('Cấu hình', {
+            'fields': ('settings',)
+        }),
+        ('Thời gian', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    ) 
