@@ -492,7 +492,7 @@
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
                             <input type="range" id="zoom" class="form-control" min="100" max="400" step="5" value="100" 
-                                   oninput="updateUISettingDisplay('zoom', this.value); debouncedApplyUISetting('zoom', 'zoom');">
+                                   oninput="updateUISettingDisplay('zoom', this.value); updatePendingSetting('zoom', this.value);">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
                         <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
@@ -506,7 +506,7 @@
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
                         <input type="range" id="brightness" class="form-control" min="-100" max="100" step="1" value="0" 
-                                   oninput="updateUISettingDisplay('brightness', this.value); debouncedApplyUISetting('brightness', 'brightness');">
+                                   oninput="updateUISettingDisplay('brightness', this.value); updatePendingSetting('brightness', this.value);">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
                     </div>
@@ -517,7 +517,7 @@
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('sharpness', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
                             <input type="range" id="sharpness" class="form-control" min="0" max="200" step="5" value="100" 
-                                   oninput="updateUISettingDisplay('sharpness', this.value); debouncedApplyUISetting('sharpness', 'sharpness');">
+                                   oninput="updateUISettingDisplay('sharpness', this.value); updatePendingSetting('sharpness', this.value);">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('sharpness', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
                     </div>
@@ -528,7 +528,7 @@
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('contrast', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
                             <input type="range" id="contrast" class="form-control" min="0" max="200" step="5" value="100" 
-                                   oninput="updateUISettingDisplay('contrast', this.value); debouncedApplyUISetting('contrast', 'contrast');">
+                                   oninput="updateUISettingDisplay('contrast', this.value); updatePendingSetting('contrast', this.value);">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('contrast', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
                     </div>
@@ -539,7 +539,7 @@
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('saturation', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
                             <input type="range" id="saturation" class="form-control" min="0" max="200" step="5" value="100" 
-                                   oninput="updateUISettingDisplay('saturation', this.value); debouncedApplyUISetting('saturation', 'saturation');">
+                                   oninput="updateUISettingDisplay('saturation', this.value); updatePendingSetting('saturation', this.value);">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('saturation', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
                     </div>
@@ -550,16 +550,19 @@
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('backgroundBlur', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
                             <input type="range" id="backgroundBlur" class="form-control" min="0" max="100" step="5" value="0" 
-                                   oninput="updateUISettingDisplay('backgroundBlur', this.value); debouncedApplyUISetting('background_blur', 'backgroundBlur');">
+                                   oninput="updateUISettingDisplay('backgroundBlur', this.value); updatePendingSetting('background_blur', this.value);">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('backgroundBlur', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
                         <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Giảm độ nét vùng nền để làm nổi bật chủ thể</small>
                     </div>
                 </div>
                 
-                <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                    <button class="btn btn-sm btn-secondary" onclick="loadUISettings()" style="flex: 1; font-size: 0.85rem;">📥 Tải thông số</button>
-                    <button class="btn btn-sm btn-secondary" onclick="resetToDefault()" style="flex: 1; font-size: 0.85rem;">🔄 Mặc định</button>
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-direction: column;">
+                    <button class="btn btn-sm btn-primary" onclick="applyPendingUISettings()" style="flex: 1; font-size: 0.85rem; font-weight: bold;">✅ Áp dụng thay đổi</button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-sm btn-secondary" onclick="reloadCameraStatusToBoard()" style="flex: 1; font-size: 0.85rem;">📥 Tải thông số</button>
+                        <button class="btn btn-sm btn-secondary" onclick="resetToDefault()" style="flex: 1; font-size: 0.85rem;">🔄 Mặc định</button>
+                    </div>
                 </div>
             </div>
             
