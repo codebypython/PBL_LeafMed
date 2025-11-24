@@ -132,17 +132,17 @@ def api_save_capture_result(request):
         plant, created = Plant.objects.get_or_create(name=label, defaults={'should_save': True})
     
         # Kiểm tra should_save
-    if not plant.should_save:
-            return JsonResponse({
-                "success": False,
-                "error": f"'{label}' không được lưu vào database (should_save=False)"
-            }, status=400)
-    
-    # Log thông tin về kích thước ảnh nếu có
-    if image_size_bytes:
-            logger.info(f"[Save Capture] Image size: {image_size_bytes} bytes ({image_size_bytes / 1024:.1f} KB)")
-    
-    # Lưu bản ghi
+        if not plant.should_save:
+                return JsonResponse({
+                    "success": False,
+                    "error": f"'{label}' không được lưu vào database (should_save=False)"
+                }, status=400)
+        
+        # Log thông tin về kích thước ảnh nếu có
+        if image_size_bytes:
+                logger.info(f"[Save Capture] Image size: {image_size_bytes} bytes ({image_size_bytes / 1024:.1f} KB)")
+        
+        # Lưu bản ghi
         capture_record = CaptureResult.objects.create(
         user=request.user,
         plant=plant,
@@ -163,7 +163,7 @@ def api_save_capture_result(request):
         
         # Refresh plant từ database để lấy đầy đủ thông tin
         plant.refresh_from_db()
-        
+            
         # Trả về JSON với đầy đủ thông tin plant
         return JsonResponse({
             'success': True,
