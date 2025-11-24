@@ -7,6 +7,7 @@ class Plant(models.Model):
     scientific_name = models.CharField(max_length=255, blank=True, default='')  # Tên khoa học
     english_name = models.CharField(max_length=255, blank=True, default='')  # Tên tiếng Anh
     vietnamese_name = models.CharField(max_length=255, blank=True, default='')  # Tên tiếng Việt (bổ sung)
+    image = models.ImageField(upload_to='plants/', null=True, blank=True)  # Ảnh cây thuốc
     description = models.TextField(blank=True, default='')  # Mô tả chi tiết
     usage = models.TextField(blank=True, default='')  # Công dụng
     common_locations = models.TextField(blank=True, default='')  # Vị trí phân bố

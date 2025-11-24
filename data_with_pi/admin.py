@@ -3,15 +3,15 @@ from .models import Plant, CaptureResult, UserCameraPreset
 
 @admin.register(Plant)
 class PlantAdmin(admin.ModelAdmin):
-    list_display = ('name', 'scientific_name', 'should_save', 'created_at')
+    list_display = ('name', 'scientific_name', 'image', 'should_save', 'created_at')
     list_filter = ('should_save', 'created_at')
-    search_fields = ('name', 'scientific_name')
+    search_fields = ('name', 'scientific_name', 'english_name', 'vietnamese_name')
     fieldsets = (
         ('Thông tin cơ bản', {
-            'fields': ('name', 'scientific_name', 'should_save')
+            'fields': ('name', 'scientific_name', 'english_name', 'vietnamese_name', 'image', 'should_save')
         }),
         ('Thông tin chi tiết', {
-            'fields': ('biological_info', 'medicinal_info')
+            'fields': ('description', 'usage', 'common_locations', 'biological_info', 'medicinal_info')
         }),
     )
 

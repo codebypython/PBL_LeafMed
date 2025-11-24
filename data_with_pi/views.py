@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 def home(request):
     """Trang chủ - hiển thị khác nhau cho user đã đăng nhập/chưa đăng nhập"""
-    return render(request, 'home.html')
+    # Lấy 34 cây thuốc từ database
+    plants = Plant.objects.all().order_by('name')[:34]
+    return render(request, 'home.html', {'plants': plants})
 
 
 def register(request):
