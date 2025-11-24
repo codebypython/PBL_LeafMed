@@ -1,77 +1,64 @@
+import csv
+import os
 from django.core.management.base import BaseCommand
 from data_with_pi.models import Plant
 
-PLANTS_DATA = [
-    {"name": "Aloevera", "should_save": True},
-    {"name": "Amla", "should_save": True},
-    {"name": "Amruthaballi", "should_save": True},
-    {"name": "Arali", "should_save": True},
-    {"name": "Background", "should_save": False},  # không lưu
-    {"name": "Badipala", "should_save": True},
-    {"name": "Bamboo", "should_save": True},
-    {"name": "Beans", "should_save": True},
-    {"name": "Betel", "should_save": True},
-    {"name": "Bhrami", "should_save": True},
-    {"name": "Caricature", "should_save": True},
-    {"name": "Castor", "should_save": True},
-    {"name": "Catharanthus", "should_save": True},
-    {"name": "Chilly", "should_save": True},
-    {"name": "Citron lime (herelikai)", "should_save": True},
-    {"name": "Coffee", "should_save": True},
-    {"name": "Coriender", "should_save": True},
-    {"name": "Curry", "should_save": True},
-    {"name": "Doddpathre", "should_save": True},
-    {"name": "Drumstick", "should_save": True},
-    {"name": "Ekka", "should_save": True},
-    {"name": "Eucalyptus", "should_save": True},
-    {"name": "Guava", "should_save": True},
-    {"name": "Hibiscus", "should_save": True},
-    {"name": "Honge", "should_save": True},
-    {"name": "Insulin", "should_save": True},
-    {"name": "Jackfruit", "should_save": True},
-    {"name": "Jasmine", "should_save": True},
-    {"name": "Kalanchoe Pinnata", "should_save": True},
-    {"name": "Lantana", "should_save": True},
-    {"name": "Lemon", "should_save": True},
-    {"name": "Lemongrass", "should_save": True},
-    {"name": "Malabar_Nut", "should_save": True},
-    {"name": "Malabar_Spinach", "should_save": True},
-    {"name": "Mango", "should_save": True},
-    {"name": "Marigold", "should_save": True},
-    {"name": "Mint", "should_save": True},
-    {"name": "Neem", "should_save": True},
-    {"name": "Nelavembu", "should_save": True},
-    {"name": "Onion", "should_save": True},
-    {"name": "Oxalis", "should_save": True},
-    {"name": "Palak(Spinach)", "should_save": True},
-    {"name": "Papaya", "should_save": True},
-    {"name": "Pea", "should_save": True},
-    {"name": "Pepper", "should_save": True},
-    {"name": "Pomoegranate", "should_save": True},
-    {"name": "Pumpkin", "should_save": True},
-    {"name": "Radish", "should_save": True},
-    {"name": "Rose", "should_save": True},
-    {"name": "Seethapala", "should_save": True},
-    {"name": "Tamarind", "should_save": True},
-    {"name": "Taro", "should_save": True},
-    {"name": "Tomato", "should_save": True},
-    {"name": "Tulsi", "should_save": True},
-    {"name": "Turmeric", "should_save": True},
-]
-
 class Command(BaseCommand):
-    help = 'Seed database với danh sách plants từ model AI'
+    help = 'Load danh sách plants từ file CSV vào database'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--file', 
+            type=str, 
+            default='plants.csv', 
+            help='Đường dẫn tới file plants.csv'
+        )
 
     def handle(self, *args, **options):
-        created = 0
-        for item in PLANTS_DATA:
-            plant, is_new = Plant.objects.get_or_create(
-                name=item['name'],
-                defaults={'should_save': item['should_save']}
-            )
-            if is_new:
-                created += 1
-                self.stdout.write(self.style.SUCCESS(f'Đã tạo: {plant.name}'))
-            else:
-                self.stdout.write(f'Đã tồn tại: {plant.name}')
-        self.stdout.write(self.style.SUCCESS(f'\nTổng: {created} plants mới được tạo'))
+        file_path = options['file']
+
+        # Kiểm tra file có tồn tại không
+        if not os.path.exists(file_path):
+            self.stdout.write(self.style.ERROR(f'Không tìm thấy file: {file_path}'))
+            return
+
+        self.stdout.write(f'Đang đọc file: {file_path}...')
+
+        created_count = 0
+        updated_count = 0
+
+        try:
+            with open(file_path, mode='r', encoding='utf-8') as csv_file:
+                reader = csv.DictReader(csv_file)
+                
+                for row in reader:
+                    # Sử dụng update_or_create để tránh trùng lặp nếu chạy lại script
+                    # Nó sẽ tìm Plant theo 'name', nếu có rồi thì update các trường còn lại, chưa có thì tạo mới.
+                    plant, created = Plant.objects.update_or_create(
+                        name=row['name'].strip(),
+                        defaults={
+                            'scientific_name': row['scientific_name'].strip(),
+                            'english_name': row['english_name'].strip(),
+                            'vietnamese_name': row['vietnamese_name'].strip(),
+                            'description': row['description'].strip(),
+                            'biological_info': row['biological_info'].strip(),
+                            'medicinal_info': row['medicinal_info'].strip(),
+                            'usage': row['usage'].strip(),
+                            'common_locations': row['common_locations'].strip(),
+                            'should_save': True
+                        }
+                    )
+
+                    if created:
+                        created_count += 1
+                        self.stdout.write(self.style.SUCCESS(f'Đã tạo mới: {plant.name}'))
+                    else:
+                        updated_count += 1
+                        self.stdout.write(f'Đã cập nhật: {plant.name}')
+
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Lỗi khi import: {str(e)}'))
+
+        self.stdout.write(self.style.SUCCESS(f'\nHOÀN TẤT!'))
+        self.stdout.write(f'- Tạo mới: {created_count}')
+        self.stdout.write(f'- Cập nhật: {updated_count}')

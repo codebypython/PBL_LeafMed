@@ -128,8 +128,11 @@ def api_save_capture_result(request):
                 "error": f"'{label}' không được lưu vào database"
             }, status=400)
         
-        # Tìm hoặc tạo Plant
-        plant, created = Plant.objects.get_or_create(name=label, defaults={'should_save': True})
+        # Tìm hoặc tạo Plant theo tên khoa học
+        plant, created = Plant.objects.get_or_create(
+            scientific_name=label, 
+            defaults={'name': label, 'should_save': True}
+        )
     
         # Kiểm tra should_save
         if not plant.should_save:
@@ -218,7 +221,10 @@ def upload_analyze(request):
         return redirect('search')
     
     label = (resp.get('name') or '').strip()
-    plant, _ = Plant.objects.get_or_create(name=label, defaults={'should_save': True})
+    plant, _ = Plant.objects.get_or_create(
+        scientific_name=label, 
+        defaults={'name': label, 'should_save': True}
+    )
     
     if plant.should_save:
         ext = os.path.splitext(f.name)[1].lower() or '.jpg'
