@@ -19,6 +19,53 @@
       {% endif %}
     </div>
 
+    <!-- Công thức chế biến -->
+    {% if recipes %}
+    <div class="info-section" style="margin-top: 2rem;">
+      <h3>🧪 Công thức chế biến ({{ recipes.count }})</h3>
+      <div class="recipes-list">
+        {% for recipe in recipes %}
+          <a href="{% url 'recipe_detail' recipe.id %}" class="recipe-item">
+            <div class="recipe-icon-header">
+              {% if recipe.image %}
+                <img src="{{ recipe.image.url }}" alt="{{ recipe.name }}" class="recipe-card-image">
+              {% else %}
+                <div class="recipe-no-image">
+                  <span class="recipe-icon">
+                    {% if recipe.recipe_type == 'tea' %}☕
+                    {% elif recipe.recipe_type == 'juice' %}🥤
+                    {% elif recipe.recipe_type == 'paste' %}🧴
+                    {% elif recipe.recipe_type == 'powder' %}🥄
+                    {% elif recipe.recipe_type == 'oil' %}🫗
+                    {% elif recipe.recipe_type == 'tincture' %}🍶
+                    {% elif recipe.recipe_type == 'syrup' %}🍯
+                    {% else %}📦{% endif %}
+                  </span>
+                </div>
+              {% endif %}
+            </div>
+            <div class="recipe-content">
+              <h4 class="recipe-name">{{ recipe.name }}</h4>
+              <div class="recipe-meta">
+                <span class="badge badge-info">{{ recipe.get_recipe_type_display }}</span>
+                <span class="badge {% if recipe.difficulty == 'easy' %}badge-success{% elif recipe.difficulty == 'medium' %}badge-info{% else %}badge-danger{% endif %}">
+                  {{ recipe.get_difficulty_display }}
+                </span>
+                <span class="badge">{{ recipe.get_usage_method_display }}</span>
+                {% if recipe.preparation_time %}
+                  <span style="font-size: 0.9rem; color: var(--text-secondary);">⏱ {{ recipe.preparation_time }} phút</span>
+                {% endif %}
+              </div>
+              {% if recipe.treats %}
+                <p class="recipe-treats">Điều trị: {{ recipe.treats|truncatewords:12 }}</p>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
     <h3>Ảnh đã chụp gần đây</h3>
     {% if recent_captures %}
       <div class="grid">

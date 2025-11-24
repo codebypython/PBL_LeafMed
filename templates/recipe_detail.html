@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <div class="recipe-header">
+        <div class="recipe-title-section">
+            <h1>{{ recipe.name }}</h1>
+            <div class="recipe-badges">
+                <span class="badge badge-info">{{ recipe.get_recipe_type_display }}</span>
+                <span class="badge {% if recipe.difficulty == 'easy' %}badge-success{% elif recipe.difficulty == 'medium' %}badge-info{% else %}badge-danger{% endif %}">
+                    {{ recipe.get_difficulty_display }}
+                </span>
+                {% if recipe.is_verified %}
+                    <span class="badge badge-success">✓ Đã xác thực</span>
+                {% endif %}
+            </div>
+        </div>
+        <a href="{% url 'plant_detail' recipe.plant.id %}" class="btn btn-outline">
+            ← Về {{ recipe.plant.name }}
+        </a>
+    </div>
+
+    <!-- Recipe Image -->
+    <div class="recipe-image-section">
+        {% if recipe.image %}
+            <img src="{{ recipe.image.url }}" alt="{{ recipe.name }}" class="recipe-main-image">
+        {% else %}
+            <div class="recipe-image-placeholder">
+                <span class="recipe-type-icon">{{ recipe.get_recipe_type_display|slice:":1" }}</span>
+                <p class="image-placeholder-text">Ảnh minh họa sẽ được cập nhật</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if recipe.description %}
+        <div class="info-section">
+            <p style="font-size: 1.1rem; color: var(--text-secondary);">{{ recipe.description }}</p>
+        </div>
+    {% endif %}
+
+    <!-- Thông tin nhanh -->
+    <div class="recipe-quick-info">
+        <div class="quick-info-item">
+            <span class="quick-info-label">Cách dùng</span>
+            <span class="quick-info-value">{{ recipe.get_usage_method_display }}</span>
+        </div>
+        {% if recipe.preparation_time %}
+        <div class="quick-info-item">
+            <span class="quick-info-label">Thời gian</span>
+            <span class="quick-info-value">{{ recipe.preparation_time }} phút</span>
+        </div>
+        {% endif %}
+        <div class="quick-info-item">
+            <span class="quick-info-label">Độ phổ biến</span>
+            <span class="quick-info-value">👁 {{ recipe.popularity }} lượt xem</span>
+        </div>
+    </div>
+
+    <!-- Công dụng -->
+    {% if recipe.treats or recipe.benefits %}
+    <div class="info-section">
+        {% if recipe.treats %}
+        <h3>🏥 Điều trị</h3>
+        <p>{{ recipe.treats|linebreaks }}</p>
+        {% endif %}
+        
+        {% if recipe.benefits %}
+        <h3>✨ Công dụng</h3>
+        <p>{{ recipe.benefits|linebreaks }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Nguyên liệu -->
+    <div class="info-section">
+        <h3>🌿 Nguyên liệu</h3>
+        <div class="ingredient-box">
+            <h4>Nguyên liệu chính:</h4>
+            <p>{{ recipe.main_ingredient|linebreaks }}</p>
+            
+            {% if recipe.additional_ingredients %}
+            <h4>Nguyên liệu phụ:</h4>
+            <p>{{ recipe.additional_ingredients|linebreaks }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Cách chế biến -->
+    <div class="info-section">
+        <h3>👨‍🍳 Cách chế biến</h3>
+        <div class="preparation-steps">
+            {{ recipe.preparation_steps|linebreaks }}
+        </div>
+    </div>
+
+    <!-- Sử dụng -->
+    <div class="info-section">
+        <h3>💊 Cách sử dụng</h3>
+        <div class="usage-box">
+            <h4>Liều lượng:</h4>
+            <p>{{ recipe.dosage|linebreaks }}</p>
+            
+            {% if recipe.duration %}
+            <h4>Thời gian điều trị:</h4>
+            <p>{{ recipe.duration }}</p>
+            {% endif %}
+            
+            {% if recipe.storage %}
+            <h4>Bảo quản:</h4>
+            <p>{{ recipe.storage|linebreaks }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Cảnh báo -->
+    {% if recipe.warnings or recipe.contraindications %}
+    <div class="info-section warning-section">
+        <h3>⚠️ Cảnh báo và lưu ý</h3>
+        {% if recipe.warnings %}
+        <div class="warning-box">
+            <strong>Cảnh báo:</strong>
+            <p>{{ recipe.warnings|linebreaks }}</p>
+        </div>
+        {% endif %}
+        
+        {% if recipe.contraindications %}
+        <div class="warning-box">
+            <strong>Chống chỉ định:</strong>
+            <p>{{ recipe.contraindications|linebreaks }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Ghi chú -->
+    {% if recipe.notes %}
+    <div class="info-section">
+        <h3>📝 Ghi chú thêm</h3>
+        <p>{{ recipe.notes|linebreaks }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Recipe Gallery -->
+    {% if recipe.images.exists %}
+    <div class="info-section">
+        <h3>📸 Hình ảnh minh họa</h3>
+        <div class="recipe-gallery">
+            {% for img in recipe.images.all %}
+            <div class="gallery-item">
+                <img src="{{ img.image.url }}" alt="{{ img.caption|default:recipe.name }}">
+                {% if img.caption %}
+                <p class="gallery-caption">{{ img.caption }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Nguồn -->
+    <div class="recipe-footer">
+        {% if recipe.source %}
+        <p><strong>Nguồn:</strong> {{ recipe.source }}</p>
+        {% endif %}
+        {% if recipe.created_by %}
+        <p><strong>Người tạo:</strong> {{ recipe.created_by.username }}</p>
+        {% endif %}
+        <p><strong>Cập nhật:</strong> {{ recipe.updated_at|date:"d/m/Y H:i" }}</p>
+    </div>
+</div>
+{% endblock %}

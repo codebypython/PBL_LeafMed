@@ -272,12 +272,32 @@ def history(request):
 @login_required
 def plant_detail(request, plant_id):
     """Trang chi tiết thông tin cây/thực vật"""
-    plant = get_object_or_404(Plant.objects.prefetch_related('captures'), id=plant_id)
+    plant = get_object_or_404(Plant.objects.prefetch_related('captures', 'recipes'), id=plant_id)
     recent_captures = plant.captures.filter(user=request.user).order_by('-created_at')[:10]
+    recipes = plant.recipes.filter(is_verified=True).order_by('-popularity', 'name')
     return render(request, 'plant_detail.html', {
         'plant': plant,
         'recent_captures': recent_captures,
+        'recipes': recipes,
         'pi_base': pi_client.base_url,
+    })
+
+
+@login_required
+def recipe_detail(request, recipe_id):
+    """Trang chi tiết công thức thuốc"""
+    from .models import Recipe
+    recipe = get_object_or_404(
+        Recipe.objects.select_related('plant', 'created_by').prefetch_related('images'),
+        id=recipe_id
+    )
+    
+    # Tăng độ phổ biến khi xem
+    recipe.popularity += 1
+    recipe.save(update_fields=['popularity'])
+    
+    return render(request, 'recipe_detail.html', {
+        'recipe': recipe,
     })
 
 

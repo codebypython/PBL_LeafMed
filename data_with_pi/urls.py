@@ -12,6 +12,7 @@ urlpatterns = [
     path('search/', views.search, name='search'),
     path('upload/', views.upload_analyze, name='upload_analyze'), 
     path('plant/<int:plant_id>/', views.plant_detail, name='plant_detail'),
+    path('recipe/<int:recipe_id>/', views.recipe_detail, name='recipe_detail'),
     
     # API endpoints cho AJAX
     path('api/capture/preview/', views.api_capture_preview, name='api_capture_preview'),
