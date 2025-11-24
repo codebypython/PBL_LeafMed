@@ -7,6 +7,7 @@ class Plant(models.Model):
     scientific_name = models.CharField(max_length=255, blank=True, default='')  # Tên khoa học
     english_name = models.CharField(max_length=255, blank=True, default='')  # Tên tiếng Anh
     vietnamese_name = models.CharField(max_length=255, blank=True, default='')  # Tên tiếng Việt (bổ sung)
+    image = models.ImageField(upload_to='plants/', null=True, blank=True)  # Ảnh cây thuốc
     description = models.TextField(blank=True, default='')  # Mô tả chi tiết
     usage = models.TextField(blank=True, default='')  # Công dụng
     common_locations = models.TextField(blank=True, default='')  # Vị trí phân bố
@@ -63,3 +64,85 @@ class UserCameraPreset(models.Model):
     
     def __str__(self):
         return f'{self.user.username} - {self.name}'
+
+class Recipe(models.Model):
+    """Công thức thuốc từ cây"""
+    RECIPE_TYPE_CHOICES = [
+        ('tea', 'Trà/Nước sắc'),
+        ('juice', 'Nước ép'),
+        ('paste', 'Cao/Thuốc đắp'),
+        ('powder', 'Bột'),
+        ('oil', 'Tinh dầu'),
+        ('tincture', 'Cồn thuốc'),
+        ('syrup', 'Siro'),
+        ('other', 'Khác'),
+    ]
+    
+    DIFFICULTY_CHOICES = [
+        ('easy', 'Dễ'),
+        ('medium', 'Trung bình'),
+        ('hard', 'Khó'),
+    ]
+    
+    USAGE_METHOD_CHOICES = [
+        ('oral', 'Uống'),
+        ('topical', 'Bôi ngoài da'),
+        ('inhale', 'Hít/Ngửi'),
+        ('compress', 'Chườm'),
+        ('gargle', 'Súc miệng'),
+        ('bath', 'Ngâm tắm'),
+    ]
+    
+    plant = models.ForeignKey('Plant', on_delete=models.CASCADE, related_name='recipes', verbose_name='Cây thuốc')
+    name = models.CharField(max_length=255, verbose_name='Tên công thức')
+    description = models.TextField(blank=True, default='', verbose_name='Mô tả')
+    recipe_type = models.CharField(max_length=20, choices=RECIPE_TYPE_CHOICES, default='tea', verbose_name='Loại công thức')
+    treats = models.TextField(blank=True, default='', verbose_name='Bệnh/Triệu chứng điều trị', 
+                              help_text='Các bệnh hoặc triệu chứng mà công thức này có thể điều trị')
+    benefits = models.TextField(blank=True, default='', verbose_name='Công dụng', 
+                                help_text='Các lợi ích sức khỏe của công thức')
+    main_ingredient = models.TextField(verbose_name='Nguyên liệu chính', 
+                                       help_text='Phần của cây sử dụng và số lượng (VD: 20-30g lá tươi hoặc 10g lá khô)')
+    additional_ingredients = models.TextField(blank=True, default='', verbose_name='Nguyên liệu phụ', 
+                                             help_text='Các nguyên liệu khác cần thiết (nếu có)')
+    preparation_steps = models.TextField(verbose_name='Cách chế biến', 
+                                        help_text='Các bước chế biến chi tiết')
+    preparation_time = models.IntegerField(null=True, blank=True, verbose_name='Thời gian chế biến (phút)', 
+                                          help_text='Tổng thời gian cần để hoàn thành công thức')
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default='easy', verbose_name='Độ khó')
+    usage_method = models.CharField(max_length=20, choices=USAGE_METHOD_CHOICES, verbose_name='Cách dùng')
+    dosage = models.TextField(verbose_name='Liều lượng', 
+                             help_text='Liều lượng và tần suất sử dụng (VD: Uống 2-3 lần/ngày, mỗi lần 100ml)')
+    duration = models.CharField(max_length=255, blank=True, default='', verbose_name='Thời gian điều trị', 
+                               help_text='Thời gian nên sử dụng (VD: 7-10 ngày)')
+    storage = models.TextField(blank=True, default='', verbose_name='Bảo quản', 
+                              help_text='Cách bảo quản và thời hạn sử dụng')
+    warnings = models.TextField(blank=True, default='', verbose_name='Cảnh báo/Lưu ý', 
+                               help_text='Các cảnh báo về tác dụng phụ, chống chỉ định, tương tác thuốc')
+    contraindications = models.TextField(blank=True, default='', verbose_name='Chống chỉ định', 
+                                        help_text='Những đối tượng không nên sử dụng (VD: Phụ nữ mang thai, trẻ em...)')
+    notes = models.TextField(blank=True, default='', verbose_name='Ghi chú thêm', 
+                            help_text='Các thông tin bổ sung, mẹo hay lưu ý khác')
+    source = models.CharField(max_length=255, blank=True, default='', verbose_name='Nguồn', 
+                             help_text='Nguồn tham khảo của công thức (sách, bài báo, dân gian...)')
+    is_verified = models.BooleanField(default=False, verbose_name='Đã xác thực', 
+                                     help_text='Công thức đã được chuyên gia xác thực')
+    popularity = models.IntegerField(default=0, verbose_name='Độ phổ biến', 
+                                    help_text='Số lượt xem hoặc sử dụng')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, 
+                                  related_name='created_recipes', verbose_name='Người tạo')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+    
+    class Meta:
+        verbose_name = 'Công thức thuốc'
+        verbose_name_plural = 'Công thức thuốc'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['plant', '-created_at'], name='data_with_p_plant_i_9efaae_idx'),
+            models.Index(fields=['recipe_type'], name='data_with_p_recipe__f9f6e3_idx'),
+            models.Index(fields=['-popularity'], name='data_with_p_popular_5135d0_idx'),
+        ]
+    
+    def __str__(self):
+        return f'{self.name} - {self.plant.name}'

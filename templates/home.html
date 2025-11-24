@@ -26,6 +26,36 @@
                 📚 Xem lịch sử
             </a>
         </div>
+        
+        <!-- Danh sách cây thuốc -->
+        <div style="margin-top: 3rem;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--primary-color);">🌿 Danh sách cây thuốc</h2>
+            {% if plants %}
+                <div class="plants-grid">
+                    {% for plant in plants %}
+                        <a href="{% url 'plant_detail' plant.id %}" class="plant-card">
+                            <div class="plant-card-image">
+                                {% if plant.image %}
+                                    <img src="{{ plant.image.url }}" alt="{{ plant.name }}">
+                                {% else %}
+                                    <div class="plant-no-image">
+                                        <span class="plant-icon">🌱</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="plant-card-body">
+                                <h3 class="plant-name">{{ plant.name }}</h3>
+                                <p class="plant-scientific">{{ plant.scientific_name }}</p>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                    Chưa có dữ liệu cây thuốc. Vui lòng chạy lệnh: <code>python manage.py seed_plants</code>
+                </p>
+            {% endif %}
+        </div>
     {% else %}
         <div style="text-align: center; padding: 3rem 0;">
             <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 2rem;">

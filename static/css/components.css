@@ -86,3 +86,114 @@
     line-height: 1.8;
     color: var(--text-secondary);
   }
+  
+  /* Plants Grid */
+  .plants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  .plant-card {
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .plant-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+  }
+  
+  .plant-card-image {
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
+    background: var(--background-light);
+    position: relative;
+  }
+  
+  .plant-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  
+  .plant-card:hover .plant-card-image img {
+    transform: scale(1.1);
+  }
+  
+  .plant-no-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+  }
+  
+  .plant-icon {
+    font-size: 3rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  }
+  
+  .plant-card-body {
+    padding: 1.25rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .plant-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  .plant-scientific {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  @media (max-width: 768px) {
+    .plants-grid {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+    
+    .plant-card-image {
+      height: 140px;
+    }
+    
+    .plant-icon {
+      font-size: 2.5rem;
+    }
+    
+    .plant-card-body {
+      padding: 1rem;
+    }
+    
+    .plant-name {
+      font-size: 1rem;
+    }
+    
+    .plant-scientific {
+      font-size: 0.8rem;
+    }
+  }
