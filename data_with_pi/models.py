@@ -96,6 +96,8 @@ class Recipe(models.Model):
     plant = models.ForeignKey('Plant', on_delete=models.CASCADE, related_name='recipes', verbose_name='Cây thuốc')
     name = models.CharField(max_length=255, verbose_name='Tên công thức')
     description = models.TextField(blank=True, default='', verbose_name='Mô tả')
+    image = models.ImageField(upload_to='recipes/', null=True, blank=True, verbose_name='Ảnh đại diện', 
+                             help_text='Ảnh minh họa chính cho công thức')
     recipe_type = models.CharField(max_length=20, choices=RECIPE_TYPE_CHOICES, default='tea', verbose_name='Loại công thức')
     treats = models.TextField(blank=True, default='', verbose_name='Bệnh/Triệu chứng điều trị', 
                               help_text='Các bệnh hoặc triệu chứng mà công thức này có thể điều trị')
@@ -146,3 +148,24 @@ class Recipe(models.Model):
     
     def __str__(self):
         return f'{self.name} - {self.plant.name}'
+
+
+class RecipeImage(models.Model):
+    """Ảnh bổ sung cho công thức (cho phép nhiều ảnh)"""
+    recipe = models.ForeignKey('Recipe', on_delete=models.CASCADE, related_name='images', verbose_name='Công thức')
+    image = models.ImageField(upload_to='recipes/gallery/', verbose_name='Ảnh')
+    caption = models.CharField(max_length=255, blank=True, default='', verbose_name='Chú thích', 
+                              help_text='Mô tả ngắn về ảnh')
+    order = models.IntegerField(default=0, verbose_name='Thứ tự hiển thị')
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tải lên')
+    
+    class Meta:
+        verbose_name = 'Ảnh công thức'
+        verbose_name_plural = 'Ảnh công thức'
+        ordering = ['order', '-uploaded_at']
+        indexes = [
+            models.Index(fields=['recipe', 'order'], name='recipe_image_idx'),
+        ]
+    
+    def __str__(self):
+        return f'{self.recipe.name} - Ảnh {self.order}'
