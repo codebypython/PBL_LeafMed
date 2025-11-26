@@ -1,17 +1,17 @@
 from django.contrib import admin
-from .models import Plant, CaptureResult, UserCameraPreset
+from .models import Plant, CaptureResult, UserCameraPreset, Recipe, RecipeImage
 
 @admin.register(Plant)
 class PlantAdmin(admin.ModelAdmin):
-    list_display = ('name', 'scientific_name', 'should_save', 'created_at')
+    list_display = ('name', 'scientific_name', 'image', 'should_save', 'created_at')
     list_filter = ('should_save', 'created_at')
-    search_fields = ('name', 'scientific_name')
+    search_fields = ('name', 'scientific_name', 'english_name', 'vietnamese_name')
     fieldsets = (
         ('Thông tin cơ bản', {
-            'fields': ('name', 'scientific_name', 'should_save')
+            'fields': ('name', 'scientific_name', 'english_name', 'vietnamese_name', 'image', 'should_save')
         }),
         ('Thông tin chi tiết', {
-            'fields': ('biological_info', 'medicinal_info')
+            'fields': ('description', 'usage', 'common_locations', 'biological_info', 'medicinal_info')
         }),
     )
 
@@ -43,4 +43,62 @@ class UserCameraPresetAdmin(admin.ModelAdmin):
         ('Thời gian', {
             'fields': ('created_at', 'updated_at')
         }),
-    ) 
+    )
+
+class RecipeImageInline(admin.TabularInline):
+    """Inline để thêm nhiều ảnh cho Recipe"""
+    model = RecipeImage
+    extra = 1  # Số form trống hiển thị
+    fields = ('image', 'caption', 'order')
+    ordering = ['order']
+
+
+@admin.register(Recipe)
+class RecipeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'plant', 'recipe_type', 'difficulty', 'usage_method', 'is_verified', 'popularity', 'created_at')
+    list_filter = ('recipe_type', 'difficulty', 'usage_method', 'is_verified', 'created_at')
+    search_fields = ('name', 'plant__name', 'plant__scientific_name', 'treats', 'benefits')
+    readonly_fields = ('created_at', 'updated_at', 'popularity')
+    list_editable = ('is_verified',)
+    inlines = [RecipeImageInline]  # Thêm inline để quản lý nhiều ảnh
+    
+    fieldsets = (
+        ('Thông tin cơ bản', {
+            'fields': ('plant', 'name', 'description', 'image', 'recipe_type', 'difficulty', 'is_verified')
+        }),
+        ('Công dụng', {
+            'fields': ('treats', 'benefits')
+        }),
+        ('Nguyên liệu', {
+            'fields': ('main_ingredient', 'additional_ingredients')
+        }),
+        ('Chế biến', {
+            'fields': ('preparation_steps', 'preparation_time')
+        }),
+        ('Sử dụng', {
+            'fields': ('usage_method', 'dosage', 'duration', 'storage')
+        }),
+        ('Cảnh báo', {
+            'fields': ('warnings', 'contraindications')
+        }),
+        ('Thông tin khác', {
+            'fields': ('notes', 'source', 'popularity', 'created_by')
+        }),
+        ('Thời gian', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('plant', 'created_by')
+
+
+@admin.register(RecipeImage)
+class RecipeImageAdmin(admin.ModelAdmin):
+    """Quản lý ảnh công thức riêng (nếu cần)"""
+    list_display = ('recipe', 'caption', 'order', 'uploaded_at')
+    list_filter = ('uploaded_at', 'recipe__plant')
+    search_fields = ('recipe__name', 'caption')
+    ordering = ['recipe', 'order'] 

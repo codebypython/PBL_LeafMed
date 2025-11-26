@@ -86,3 +86,454 @@
     line-height: 1.8;
     color: var(--text-secondary);
   }
+  
+  /* Plants Grid */
+  .plants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  .plant-card {
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .plant-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+  }
+  
+  .plant-card-image {
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
+    background: var(--background-light);
+    position: relative;
+  }
+  
+  .plant-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  
+  .plant-card:hover .plant-card-image img {
+    transform: scale(1.1);
+  }
+  
+  .plant-no-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+  }
+  
+  .plant-icon {
+    font-size: 3rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  }
+  
+  .plant-card-body {
+    padding: 1.25rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .plant-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  .plant-scientific {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  /* Recipes Grid - Giống Plant Cards */
+  .recipes-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+  
+  .recipe-item {
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .recipe-item:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+  }
+  
+  .recipe-icon-header {
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
+    background: var(--background-light);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .recipe-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .recipe-item:hover .recipe-card-image {
+    transform: scale(1.1);
+  }
+
+  .recipe-no-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e8f5e9 0%, #66bb6a 100%);
+  }
+  
+  .recipe-icon {
+    font-size: 4rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  }
+  
+  .recipe-content {
+    padding: 1.25rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .recipe-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  .recipe-meta {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  
+  .recipe-treats {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  /* Recipe Detail Page - Traditional Layout */
+  .recipe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  
+  .recipe-title-section h1 {
+    margin: 0 0 0.75rem 0;
+    color: var(--primary);
+  }
+  
+  .recipe-badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  /* Recipe Image Section */
+  .recipe-image-section {
+    margin-bottom: 2rem;
+  }
+
+  .recipe-image-placeholder {
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+    border-radius: var(--border-radius);
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 200px;
+    color: white;
+    text-align: center;
+  }
+
+  .recipe-type-icon {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+  .image-placeholder-text {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin: 0;
+  }
+
+  .recipe-main-image {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+    display: block;
+  }
+
+  /* Recipe Gallery */
+  .recipe-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .gallery-item {
+    position: relative;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+  }
+
+  .gallery-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .gallery-item img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .gallery-caption {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    background: white;
+    margin: 0;
+    text-align: center;
+  }
+  
+  .recipe-quick-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--background-light);
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+  }
+  
+  .quick-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .quick-info-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  
+  .quick-info-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  
+  .ingredient-box,
+  .usage-box {
+    padding: 1.25rem;
+    background: var(--background-light);
+    border-left: 4px solid var(--primary);
+    border-radius: var(--border-radius);
+  }
+  
+  .ingredient-box h4,
+  .usage-box h4 {
+    margin: 1rem 0 0.5rem 0;
+    color: var(--primary);
+    font-size: 1rem;
+  }
+  
+  .ingredient-box h4:first-child,
+  .usage-box h4:first-child {
+    margin-top: 0;
+  }
+  
+  .ingredient-box p,
+  .usage-box p {
+    margin: 0;
+  }
+  
+  .preparation-steps {
+    padding: 1.25rem;
+    background: var(--background-light);
+    border-radius: var(--border-radius);
+    line-height: 1.8;
+  }
+  
+  .warning-section {
+    background: #fff3cd;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    border-left: 4px solid #ffc107;
+  }
+  
+  .warning-box {
+    margin-bottom: 1rem;
+  }
+  
+  .warning-box:last-child {
+    margin-bottom: 0;
+  }
+  
+  .warning-box strong {
+    color: #856404;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  
+  .warning-box p {
+    margin: 0;
+    color: #856404;
+  }
+  
+  .recipe-footer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--border-color);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  
+  .recipe-footer p {
+    margin: 0.25rem 0;
+  }
+  
+  @media (max-width: 768px) {
+    .plants-grid {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+    
+    .plant-card-image {
+      height: 140px;
+    }
+    
+    .plant-icon {
+      font-size: 2.5rem;
+    }
+    
+    .plant-card-body {
+      padding: 1rem;
+    }
+    
+    .plant-name {
+      font-size: 1rem;
+    }
+    
+    .plant-scientific {
+      font-size: 0.8rem;
+    }
+    
+    .recipes-list {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+    
+    .recipe-icon-header {
+      height: 140px;
+    }
+    
+    .recipe-icon {
+      font-size: 3rem;
+    }
+    
+    .recipe-content {
+      padding: 1rem;
+    }
+    
+    .recipe-name {
+      font-size: 1rem;
+    }
+    
+    /* Recipe Detail Responsive */
+    .recipe-header {
+      flex-direction: column;
+    }
+
+    .recipe-image-placeholder {
+      padding: 2rem;
+      min-height: 150px;
+    }
+
+    .recipe-type-icon {
+      width: 60px;
+      height: 60px;
+      font-size: 2rem;
+    }
+
+    .recipe-quick-info {
+      grid-template-columns: 1fr;
+    }
+  }

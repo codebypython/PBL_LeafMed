@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 def home(request):
     """Trang chủ - hiển thị khác nhau cho user đã đăng nhập/chưa đăng nhập"""
-    return render(request, 'home.html')
+    # Lấy 34 cây thuốc từ database
+    plants = Plant.objects.all().order_by('name')[:34]
+    return render(request, 'home.html', {'plants': plants})
 
 
 def register(request):
@@ -128,19 +130,23 @@ def api_save_capture_result(request):
                 "error": f"'{label}' không được lưu vào database"
             }, status=400)
         
-        # Tìm hoặc tạo Plant
-        plant, created = Plant.objects.get_or_create(name=label, defaults={'should_save': True})
-        
+
+        # Tìm hoặc tạo Plant theo tên khoa học
+        plant, created = Plant.objects.get_or_create(
+            scientific_name=label, 
+            defaults={'name': label, 'should_save': True}
+        )
+    
         # Kiểm tra should_save
         if not plant.should_save:
-            return JsonResponse({
-                "success": False,
-                "error": f"'{label}' không được lưu vào database (should_save=False)"
-            }, status=400)
+                return JsonResponse({
+                    "success": False,
+                    "error": f"'{label}' không được lưu vào database (should_save=False)"
+                }, status=400)
         
         # Log thông tin về kích thước ảnh nếu có
         if image_size_bytes:
-            logger.info(f"[Save Capture] Image size: {image_size_bytes} bytes ({image_size_bytes / 1024:.1f} KB)")
+                logger.info(f"[Save Capture] Image size: {image_size_bytes} bytes ({image_size_bytes / 1024:.1f} KB)")
         
         # Lưu bản ghi
         capture_record = CaptureResult.objects.create(
@@ -163,7 +169,7 @@ def api_save_capture_result(request):
         
         # Refresh plant từ database để lấy đầy đủ thông tin
         plant.refresh_from_db()
-        
+            
         # Trả về JSON với đầy đủ thông tin plant
         return JsonResponse({
             'success': True,
@@ -218,7 +224,10 @@ def upload_analyze(request):
         return redirect('search')
     
     label = (resp.get('name') or '').strip()
-    plant, _ = Plant.objects.get_or_create(name=label, defaults={'should_save': True})
+    plant, _ = Plant.objects.get_or_create(
+        scientific_name=label, 
+        defaults={'name': label, 'should_save': True}
+    )
     
     if plant.should_save:
         ext = os.path.splitext(f.name)[1].lower() or '.jpg'
@@ -264,12 +273,32 @@ def history(request):
 @login_required
 def plant_detail(request, plant_id):
     """Trang chi tiết thông tin cây/thực vật"""
-    plant = get_object_or_404(Plant.objects.prefetch_related('captures'), id=plant_id)
+    plant = get_object_or_404(Plant.objects.prefetch_related('captures', 'recipes'), id=plant_id)
     recent_captures = plant.captures.filter(user=request.user).order_by('-created_at')[:10]
+    recipes = plant.recipes.filter(is_verified=True).order_by('-popularity', 'name')
     return render(request, 'plant_detail.html', {
         'plant': plant,
         'recent_captures': recent_captures,
+        'recipes': recipes,
         'pi_base': pi_client.base_url,
+    })
+
+
+@login_required
+def recipe_detail(request, recipe_id):
+    """Trang chi tiết công thức thuốc"""
+    from .models import Recipe
+    recipe = get_object_or_404(
+        Recipe.objects.select_related('plant', 'created_by').prefetch_related('images'),
+        id=recipe_id
+    )
+    
+    # Tăng độ phổ biến khi xem
+    recipe.popularity += 1
+    recipe.save(update_fields=['popularity'])
+    
+    return render(request, 'recipe_detail.html', {
+        'recipe': recipe,
     })
 
 
