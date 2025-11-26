@@ -153,11 +153,10 @@ class CameraUI {
      * - Do đó, sau khi apply một setting, cần reload từ server để sync UI với giá trị thực tế
      */
     updateUISettings(uiSettings) {
-        console.log('[UI] Updating UI with server settings:', uiSettings);
+        console.log('[UI] Updating UI with settings from StatusBoard:', uiSettings);
         
-        // QUAN TRỌNG: Không check isApplying ở đây nữa
-        // Vì flag đã được reset trước khi gọi hàm này
-        // Nếu check isApplying, sẽ skip update khi reload sau apply
+        // QUAN TRỌNG: Luôn update UI từ StatusBoard (source of truth)
+        // StatusBoard đã đảm bảo giá trị đúng từ camera, không cần check isApplying
         
         // Validate và normalize settings
         const normalizedSettings = {
@@ -203,9 +202,13 @@ class CameraUI {
         const numValue = parseFloat(value) || (min + max) / 2;
         const clampedValue = Math.max(min, Math.min(max, numValue));
         
-        // Chỉ update nếu giá trị khác với giá trị hiện tại (tránh update không cần thiết)
+        // QUAN TRỌNG: Luôn update từ StatusBoard (source of truth)
+        // Không check chênh lệch vì StatusBoard đã đảm bảo giá trị đúng từ camera
         const currentValue = parseFloat(element.value);
-        if (Math.abs(currentValue - clampedValue) > 0.1) {
+        const needsUpdate = Math.abs(currentValue - clampedValue) > 0.1;
+        
+        if (needsUpdate) {
+            console.log(`[UI] Updating ${elementId}: ${currentValue} → ${clampedValue}`);
             // Đánh dấu đang update programmatically để tránh trigger event oninput
             // Event oninput sẽ check flag này và skip apply
             element.dataset.programmaticUpdate = 'true';
@@ -218,7 +221,10 @@ class CameraUI {
             // (nếu có event đã được trigger, nó sẽ check flag này và skip)
             setTimeout(() => {
                 delete element.dataset.programmaticUpdate;
-            }, 200);
+            }, 300);
+        } else {
+            // Giá trị đã đúng, nhưng vẫn đảm bảo display text được update
+            console.log(`[UI] ${elementId} already at correct value: ${clampedValue}`);
         }
         
         // Luôn update display text
@@ -275,14 +281,39 @@ class CameraControls {
     }
     
     /**
-     * Initialize - load current settings
+     * Initialize - load current settings từ StatusBoard
      */
     async init() {
         console.log('[CameraControls] Initializing...');
         
         try {
             this.ui.initRangeSliders();
-            await this.loadUISettings();
+            
+            // Subscribe vào StatusBoard để nhận thông báo khi có thay đổi
+            if (window.CameraStatusBoard) {
+                window.CameraStatusBoard.subscribe((type, data) => {
+                    console.log('[CameraControls] StatusBoard notification:', type, data);
+                    if (type === 'ui_settings' || type === 'all_loaded') {
+                        // Update UI từ StatusBoard (source of truth)
+                        const uiSettings = type === 'all_loaded' ? data.ui : data;
+                        if (uiSettings) {
+                            console.log('[CameraControls] Updating UI from StatusBoard:', uiSettings);
+                            // Update UI ngay lập tức (không cần setTimeout vì DOM đã sẵn sàng)
+                            this.ui.updateUISettings(uiSettings);
+                        } else {
+                            console.warn('[CameraControls] No UI settings in notification:', { type, data });
+                        }
+                    }
+                });
+                
+                // Load từ camera vào StatusBoard
+                await window.CameraStatusBoard.loadFromCamera();
+            } else {
+                // Fallback: load trực tiếp nếu StatusBoard chưa sẵn sàng
+                console.warn('[CameraControls] StatusBoard not ready, loading directly...');
+                await this.loadUISettings();
+            }
+            
             console.log('[CameraControls] Initialized successfully');
         } catch (error) {
             console.error('[CameraControls] Initialization error:', error);
@@ -290,38 +321,40 @@ class CameraControls {
     }
     
     /**
-     * Load UI settings từ server
-     * Đây là source of truth - UI sẽ được update từ đây
+     * Load UI settings từ StatusBoard (không load trực tiếp từ server nữa)
+     * StatusBoard là source of truth
      */
     async loadUISettings() {
         try {
-            console.log('[CameraControls] Loading UI settings from server...');
-            const data = await this.api.getCurrentUISettings();
+            console.log('[CameraControls] Loading UI settings from StatusBoard...');
             
-            if (data.error) {
-                console.error('[CameraControls] API error:', data.error);
-                throw new Error(data.error);
-            }
-            
-            // Handle different response formats
-            let uiSettings = null;
-            if (data.ui_settings) {
-                uiSettings = data.ui_settings;
-            } else if (data.success && data.ui_settings) {
-                uiSettings = data.ui_settings;
-            } else if (data.brightness !== undefined || data.sharpness !== undefined) {
-                // Direct settings object
-                uiSettings = data;
-            }
-            
-            if (uiSettings) {
-                console.log('[CameraControls] Received UI settings:', uiSettings);
-                // Use setTimeout để đảm bảo DOM đã sẵn sàng
-                setTimeout(() => {
-                    this.ui.updateUISettings(uiSettings);
-                }, 50);
+            // Reload StatusBoard từ camera
+            if (window.CameraStatusBoard) {
+                await window.CameraStatusBoard.loadFromCamera();
+                // UI sẽ được update tự động qua listener
             } else {
-                console.warn('[CameraControls] No ui_settings in response:', data);
+                console.warn('[CameraControls] StatusBoard not available, loading directly...');
+                // Fallback: load trực tiếp
+                const data = await this.api.getCurrentUISettings();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                let uiSettings = null;
+                if (data.ui_settings) {
+                    uiSettings = data.ui_settings;
+                } else if (data.success && data.ui_settings) {
+                    uiSettings = data.ui_settings;
+                } else if (data.brightness !== undefined || data.sharpness !== undefined) {
+                    uiSettings = data;
+                }
+                
+                if (uiSettings) {
+                    setTimeout(() => {
+                        this.ui.updateUISettings(uiSettings);
+                    }, 50);
+                }
             }
         } catch (error) {
             console.error('[CameraControls] Error loading UI settings:', error);
@@ -331,73 +364,63 @@ class CameraControls {
     
     /**
      * Apply một UI setting
-     * Flow: Apply -> Reload từ server -> Update UI
+     * Flow: Apply lên camera -> Đọc lại từ camera -> Cập nhật StatusBoard -> UI tự động update từ StatusBoard
      */
     async applyUISetting(name, value) {
-        // Set flag để prevent UI update từ reload
-        this.state.isApplying = true;
-        
         try {
             console.log('[CameraControls] Applying UI setting:', name, '=', value);
             
-            // Apply setting
+            // Apply setting lên camera
             const data = await this.api.applyUISettings({ [name]: value });
             
             if (data.error) {
                 throw new Error(data.error);
             }
             
-            // Nếu response có current_ui_settings, dùng nó luôn (nhanh hơn và chính xác)
-            // current_ui_settings đã được convert từ technical settings thực tế từ camera,
-            // nên nó đã reflect đúng conflict resolution (ví dụ: sharpness >= 100% thì background_blur = 0%)
-            // QUAN TRỌNG: current_ui_settings được lấy SAU KHI apply, nên nó đã reflect giá trị mới
-            if (data.current_ui_settings) {
-                console.log('[CameraControls] Using current_ui_settings from response:', data.current_ui_settings);
-                // Đợi một chút để đảm bảo camera đã apply settings hoàn toàn
-                await new Promise(resolve => setTimeout(resolve, 300));
-                // Reset flag trước khi update UI
-                this.state.isApplying = false;
-                // Update UI với giá trị từ server (đảm bảo sync đúng với giá trị thực tế)
-                this.ui.updateUISettings(data.current_ui_settings);
+            // Đợi camera apply settings (camera cần thời gian để apply)
+            await new Promise(resolve => setTimeout(resolve, 600));
+            
+            // QUAN TRỌNG: Reload StatusBoard từ camera (source of truth)
+            // StatusBoard sẽ notify và UI sẽ tự động update
+            // KHÔNG set isApplying flag vì UI cần được update từ StatusBoard
+            if (window.CameraStatusBoard) {
+                await window.CameraStatusBoard.loadFromCamera();
+                // StatusBoard đã notify, UI sẽ tự động update qua listener
             } else {
-                // Reload UI settings từ server để sync
-                // Đợi lâu hơn để camera apply settings (camera có thể cần thời gian)
-                await new Promise(resolve => setTimeout(resolve, 600));
-                // Reset flag trước khi reload
-                this.state.isApplying = false;
-                // Reload settings từ server (lấy giá trị thực tế từ camera)
+                // Fallback: reload trực tiếp
                 await this.loadUISettings();
             }
             
-            console.log('[CameraControls] UI setting applied and synced');
+            console.log('[CameraControls] UI setting applied and synced via StatusBoard');
             
-            // Refresh camera status panel after applying setting
+            // Refresh camera status panel
             if (window.refreshCameraStatus) {
                 setTimeout(() => {
                     window.refreshCameraStatus();
-                }, 500);
+                }, 300);
             }
         } catch (error) {
             console.error('[CameraControls] Error applying UI setting:', error);
             // Reload để sync lại nếu có lỗi
             try {
                 await new Promise(resolve => setTimeout(resolve, 500));
-                await this.loadUISettings();
+                if (window.CameraStatusBoard) {
+                    await window.CameraStatusBoard.loadFromCamera();
+                } else {
+                    await this.loadUISettings();
+                }
             } catch (e) {
                 console.error('[CameraControls] Error reloading after error:', e);
             }
-            this.state.isApplying = false;
             throw error;
         }
     }
     
     /**
      * Apply preset
-     * Flow: Apply preset -> Reload UI settings -> Update UI
+     * Flow: Apply preset lên camera -> Đọc lại từ camera -> Cập nhật StatusBoard -> UI tự động update
      */
     async applyPreset(presetName) {
-        this.state.isApplying = true;
-        
         try {
             console.log('[CameraControls] Applying preset:', presetName);
             
@@ -407,34 +430,40 @@ class CameraControls {
                 throw new Error(data.error);
             }
             
-            // Đợi camera apply settings
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Đợi camera apply settings (camera cần thời gian để apply)
+            await new Promise(resolve => setTimeout(resolve, 600));
             
-            // Reload UI settings từ server để sync
-            await this.loadUISettings();
+            // QUAN TRỌNG: Reload StatusBoard từ camera (source of truth)
+            // StatusBoard sẽ notify và UI sẽ tự động update
+            // KHÔNG dùng isApplying flag vì UI cần được update từ StatusBoard
+            if (window.CameraStatusBoard) {
+                await window.CameraStatusBoard.loadFromCamera();
+                // StatusBoard đã notify, UI sẽ tự động update qua listener
+            } else {
+                // Fallback: reload trực tiếp
+                await this.loadUISettings();
+            }
             
-            // Đợi thêm một chút để đảm bảo UI đã được update
-            await new Promise(resolve => setTimeout(resolve, 200));
+            console.log('[CameraControls] Preset applied and synced via StatusBoard');
             
-            this.state.isApplying = false;
-            
-            console.log('[CameraControls] Preset applied and synced');
-            
-            // Refresh camera status panel after applying preset
+            // Refresh camera status panel
             if (window.refreshCameraStatus) {
                 setTimeout(() => {
                     window.refreshCameraStatus();
-                }, 500);
+                }, 300);
             }
         } catch (error) {
             console.error('[CameraControls] Error applying preset:', error);
             try {
                 await new Promise(resolve => setTimeout(resolve, 500));
-                await this.loadUISettings();
+                if (window.CameraStatusBoard) {
+                    await window.CameraStatusBoard.loadFromCamera();
+                } else {
+                    await this.loadUISettings();
+                }
             } catch (e) {
                 console.error('[CameraControls] Error reloading after preset error:', e);
             }
-            this.state.isApplying = false;
             throw error;
         }
     }

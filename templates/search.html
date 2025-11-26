@@ -618,6 +618,7 @@
     </div>
 </div>
   
+  <script src="{% static 'js/camera-status-board.js' %}"></script>
   <script src="{% static 'js/search.js' %}"></script>
   <script src="{% static 'js/camera-controls.js' %}"></script>
   <script>
@@ -629,10 +630,27 @@
     checkPiStatus();
     setInterval(checkPiStatus, 30000);
     loadUnifiedPresets(); // Load unified presets khi trang load
-    refreshCameraStatus(); // Load camera status khi trang load
+    
+    // Load camera status từ StatusBoard khi trang load
+    // Đợi một chút để đảm bảo StatusBoard đã khởi tạo
+    setTimeout(async () => {
+        if (window.CameraStatusBoard) {
+            await window.CameraStatusBoard.loadFromCamera();
+            refreshCameraStatus(); // Update UI từ StatusBoard
+        } else {
+            refreshCameraStatus(); // Fallback
+        }
+    }, 500);
     
     // Auto-refresh camera status every 5 seconds
-    setInterval(refreshCameraStatus, 5000);
+    setInterval(async () => {
+        if (window.CameraStatusBoard) {
+            await window.CameraStatusBoard.loadFromCamera();
+            refreshCameraStatus();
+        } else {
+            refreshCameraStatus();
+        }
+    }, 5000);
     
     // Load resolution profiles khi trang load
     if (window.loadResolutionProfiles) {

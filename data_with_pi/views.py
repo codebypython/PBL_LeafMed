@@ -116,7 +116,7 @@ def api_save_capture_result(request):
         file = data.get('file', '')
         image_url = data.get('image_url', '')
         image_size_bytes = data.get('image_size_bytes', 0)
-    
+        
         if not label:
             return JsonResponse({"success": False, "error": "Không có tên thực vật"}, status=400)
         
@@ -130,28 +130,28 @@ def api_save_capture_result(request):
         
         # Tìm hoặc tạo Plant
         plant, created = Plant.objects.get_or_create(name=label, defaults={'should_save': True})
-    
+        
         # Kiểm tra should_save
-    if not plant.should_save:
+        if not plant.should_save:
             return JsonResponse({
                 "success": False,
                 "error": f"'{label}' không được lưu vào database (should_save=False)"
             }, status=400)
-    
-    # Log thông tin về kích thước ảnh nếu có
-    if image_size_bytes:
+        
+        # Log thông tin về kích thước ảnh nếu có
+        if image_size_bytes:
             logger.info(f"[Save Capture] Image size: {image_size_bytes} bytes ({image_size_bytes / 1024:.1f} KB)")
-    
-    # Lưu bản ghi
+        
+        # Lưu bản ghi
         capture_record = CaptureResult.objects.create(
-        user=request.user,
-        plant=plant,
-        name=label,
+            user=request.user,
+            plant=plant,
+            name=label,
             confidence=confidence,
             image_file=file,
             local_image=None,
-        success=True,
-        source='pi',
+            success=True,
+            source='pi',
             raw={
                 'name': label,
                 'confidence': confidence,

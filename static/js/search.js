@@ -291,7 +291,11 @@ async function applySelectedPreset() {
                 statusEl.style.color = 'var(--success)';
                 
                 // Refresh camera status after applying preset
-                setTimeout(() => {
+                // StatusBoard sẽ được reload và UI sẽ tự động update
+                setTimeout(async () => {
+                    if (window.CameraStatusBoard) {
+                        await window.CameraStatusBoard.loadFromCamera();
+                    }
                     refreshCameraStatus();
                     if (window.loadUISettings) {
                         window.loadUISettings();
@@ -320,7 +324,11 @@ async function applySelectedPreset() {
                 statusEl.style.color = 'var(--success)';
                 
                 // Refresh camera status after applying preset
-                setTimeout(() => {
+                // StatusBoard sẽ được reload và UI sẽ tự động update
+                setTimeout(async () => {
+                    if (window.CameraStatusBoard) {
+                        await window.CameraStatusBoard.loadFromCamera();
+                    }
                     refreshCameraStatus();
                     if (window.loadUISettings) {
                         window.loadUISettings();
@@ -458,35 +466,25 @@ async function deleteUserPreset() {
 }
 
 // Refresh camera status with all technical parameters
+// QUAN TRỌNG: Cập nhật từ StatusBoard (source of truth)
 async function refreshCameraStatus() {
     try {
-        // Load system settings (state, mode, preset)
-        const settingsResponse = await fetch('/api/settings/');
-        const settingsData = await settingsResponse.json();
-        
-        if (!settingsData.error) {
-            document.getElementById('settingsState').textContent = settingsData.state || '-';
-            document.getElementById('settingsMode').textContent = settingsData.mode || '-';
-            document.getElementById('settingsPreset').textContent = settingsData.preset || '-';
-        }
-        
-        // Load camera technical settings
-        const cameraResponse = await fetch('/api/settings/camera/');
-        const cameraData = await cameraResponse.json();
-        
-        // Handle different response formats
-        let settings = null;
-        if (cameraData.settings) {
-            settings = cameraData.settings;
-        } else if (cameraData.success && cameraData.settings) {
-            settings = cameraData.settings;
-        } else if (!cameraData.error) {
-            // Direct settings object
-            settings = cameraData;
-        }
-        
-        if (!cameraData.error && settings) {
-            const s = settings;
+        // Reload StatusBoard từ camera
+        if (window.CameraStatusBoard) {
+            await window.CameraStatusBoard.loadFromCamera();
+            
+            // Lấy dữ liệu từ StatusBoard
+            const systemInfo = window.CameraStatusBoard.getSystemInfo();
+            const technicalSettings = window.CameraStatusBoard.getTechnicalSettings();
+            const resolutionInfo = window.CameraStatusBoard.getResolutionInfo();
+            
+            // Update system info
+            document.getElementById('settingsState').textContent = systemInfo.state || '-';
+            document.getElementById('settingsMode').textContent = systemInfo.mode || '-';
+            document.getElementById('settingsPreset').textContent = systemInfo.preset || '-';
+            
+            // Update technical settings
+            const s = technicalSettings;
             
             // Format AnalogueGain (ISO)
             const gain = s.AnalogueGain;
@@ -495,7 +493,6 @@ async function refreshCameraStatus() {
                 if (gain === 0 || gain === 0.0) {
                     gainText = 'Auto';
                 } else {
-                    // Convert to ISO: 1.0 = ISO 100, 8.0 = ISO 800
                     const iso = Math.round(gain * 100);
                     gainText = `${gain.toFixed(2)} (ISO ${iso})`;
                 }
@@ -509,7 +506,6 @@ async function refreshCameraStatus() {
                 if (expTime === 0) {
                     expTimeText = 'Auto';
                 } else {
-                    // Convert microseconds to milliseconds or seconds
                     if (expTime < 1000) {
                         expTimeText = `${expTime} µs`;
                     } else if (expTime < 1000000) {
@@ -541,22 +537,21 @@ async function refreshCameraStatus() {
                 (s.AwbEnable !== undefined) ? (s.AwbEnable ? 'Bật' : 'Tắt') : '-';
             
             // Frame rate
-            const framerate = s.framerate || cameraData.framerate;
+            const framerate = s.framerate;
             document.getElementById('statusFps').textContent = framerate ? `${framerate} fps` : '-';
-        }
-        
-        // Load resolution info
-        const resolutionResponse = await fetch('/api/resolution/');
-        const resolutionData = await resolutionResponse.json();
-        
-        if (!resolutionData.error && resolutionData.resolution_main) {
-            const width = resolutionData.resolution_main[0];
-            const height = resolutionData.resolution_main[1];
-            document.getElementById('statusResolution').textContent = `${width} × ${height}`;
-            document.getElementById('statusMegapixels').textContent = 
-                resolutionData.megapixels ? resolutionData.megapixels.toFixed(2) : '-';
-            document.getElementById('statusAspectRatio').textContent = 
-                resolutionData.aspect_ratio || '-';
+            
+            // Update resolution info
+            if (resolutionInfo.resolution_main) {
+                const width = resolutionInfo.resolution_main[0];
+                const height = resolutionInfo.resolution_main[1];
+                document.getElementById('statusResolution').textContent = `${width} × ${height}`;
+                document.getElementById('statusMegapixels').textContent = 
+                    resolutionInfo.megapixels ? resolutionInfo.megapixels.toFixed(2) : '-';
+                document.getElementById('statusAspectRatio').textContent = 
+                    resolutionInfo.aspect_ratio || '-';
+            }
+        } else {
+            console.warn('[refreshCameraStatus] StatusBoard not available');
         }
         
     } catch (error) {
