@@ -254,3 +254,33 @@ class PiClient:
         except Exception as e:
             return {"error": str(e)}
 
+    # Video recording methods (tạm thời - để tăng dataset)
+    def start_video_recording(self, duration: int = None) -> Dict:
+        """Bắt đầu quay video"""
+        try:
+            data = {}
+            if duration:
+                data['duration'] = duration
+            response = self._request('POST', '/video/start', data=data, timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def stop_video_recording(self) -> Dict:
+        """Dừng quay video và lưu trên Pi"""
+        try:
+            response = self._request('POST', '/video/stop', timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def get_video_recording_status(self) -> Dict:
+        """Lấy trạng thái recording hiện tại"""
+        try:
+            response = self._request('GET', '/video/status')
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            return {"success": False, "error": str(e), "recording": False}

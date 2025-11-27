@@ -593,3 +593,42 @@ def api_delete_preset(request):
         })
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+
+
+# Video recording endpoints (tạm thời - chỉ để quay video lưu trên Pi, không lưu DB)
+@login_required
+@require_http_methods(["POST"])
+def api_start_video_recording(request):
+    """API endpoint: Bắt đầu quay video - chỉ gọi Pi API, không lưu DB"""
+    import json
+    try:
+        data = json.loads(request.body) if request.body else {}
+        duration = data.get('duration')  # Optional: thời gian quay (giây)
+        
+        result = pi_client.start_video_recording(duration=duration)
+        return JsonResponse(result)
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+    except Exception as e:
+        logger.error(f"[Video] Error starting recording: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_stop_video_recording(request):
+    """API endpoint: Dừng quay video và lưu trên Pi - KHÔNG lưu vào DB"""
+    try:
+        result = pi_client.stop_video_recording()
+        # Video được lưu trực tiếp trên Pi, không cần lưu vào Django DB
+        return JsonResponse(result)
+    except Exception as e:
+        logger.error(f"[Video] Error stopping recording: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def api_get_video_recording_status(request):
+    """API endpoint: Lấy trạng thái recording"""
+    status = pi_client.get_video_recording_status()
+    return JsonResponse(status)

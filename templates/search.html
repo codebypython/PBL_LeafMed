@@ -384,9 +384,19 @@
                             📸 Chụp ảnh và phân tích
                         </button>
                     </form>
+                    <button class="btn btn-danger btn-lg" id="startVideoBtn" onclick="startVideoRecording()">
+                        🔴 Bắt đầu quay video
+                    </button>
+                    <button class="btn btn-danger btn-lg" id="stopVideoBtn" onclick="stopVideoRecording()" style="display: none;">
+                        ⏹️ Dừng quay video
+                    </button>
+                    <div id="videoStatus" style="display: none; padding: 0.5rem; background: rgba(220, 53, 69, 0.1); border-radius: var(--border-radius-sm); margin-top: 0.5rem; text-align: center;">
+                        <span id="videoStatusText">🔴 Đang quay...</span>
+                        <span id="videoDuration" style="margin-left: 1rem; font-weight: bold; color: var(--danger);">00:00</span>
+                    </div>
                     <button class="btn btn-secondary" onclick="pauseStream()" id="pauseBtn">⏸️ Tạm dừng</button>
                     <button class="btn btn-secondary" onclick="resumeStream()" id="resumeBtn" style="display: none;">▶️ Tiếp tục</button>
-                </div>
+                </div>        
             </div>
             
             <!-- Tab Upload -->
@@ -1418,6 +1428,200 @@
     
     // NOTE: Camera controls initialization is handled by camera-controls.js
     // Range sliders, resolution profiles, and settings are auto-initialized
+
+        // ============================================================
+    // VIDEO RECORDING (Tạm thời - để tăng dataset)
+    // ============================================================
+    
+    // Video Recording State
+    let videoRecordingState = {
+        isRecording: false,
+        startTime: null,
+        durationInterval: null,
+        statusPollInterval: null
+    };
+    
+    // Bắt đầu quay video
+    async function startVideoRecording() {
+        if (videoRecordingState.isRecording) {
+            alert('Đang quay video!');
+            return;
+        }
+        
+        const startBtn = document.getElementById('startVideoBtn');
+        const stopBtn = document.getElementById('stopVideoBtn');
+        const statusDiv = document.getElementById('videoStatus');
+        const statusText = document.getElementById('videoStatusText');
+        const durationSpan = document.getElementById('videoDuration');
+        
+        try {
+            startBtn.disabled = true;
+            startBtn.textContent = '⏳ Đang khởi động...';
+            
+            const response = await fetch('/api/video/start/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                videoRecordingState.isRecording = true;
+                videoRecordingState.startTime = Date.now();
+                
+                // Update UI
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                statusDiv.style.display = 'block';
+                statusText.textContent = '🔴 Đang quay...';
+                durationSpan.textContent = '00:00';
+                
+                // Start duration timer
+                videoRecordingState.durationInterval = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - videoRecordingState.startTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    durationSpan.textContent = 
+                        String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+                }, 1000);
+                
+                // Poll recording status periodically (mỗi 5 giây)
+                pollVideoStatus();
+            } else {
+                throw new Error(data.error || 'Lỗi khởi động quay video');
+            }
+        } catch (error) {
+            console.error('Start video error:', error);
+            alert('Lỗi: ' + error.message);
+            startBtn.disabled = false;
+            startBtn.textContent = '🔴 Bắt đầu quay video';
+        }
+    }
+    
+    // Dừng quay video
+    async function stopVideoRecording() {
+        if (!videoRecordingState.isRecording) {
+            return;
+        }
+        
+        const startBtn = document.getElementById('startVideoBtn');
+        const stopBtn = document.getElementById('stopVideoBtn');
+        const statusDiv = document.getElementById('videoStatus');
+        
+        try {
+            stopBtn.disabled = true;
+            stopBtn.textContent = '⏳ Đang dừng...';
+            
+            const response = await fetch('/api/video/stop/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Clear intervals
+                if (videoRecordingState.durationInterval) {
+                    clearInterval(videoRecordingState.durationInterval);
+                    videoRecordingState.durationInterval = null;
+                }
+                if (videoRecordingState.statusPollInterval) {
+                    clearTimeout(videoRecordingState.statusPollInterval);
+                    videoRecordingState.statusPollInterval = null;
+                }
+                
+                // Reset state
+                videoRecordingState.isRecording = false;
+                videoRecordingState.startTime = null;
+                
+                // Update UI
+                startBtn.style.display = 'inline-block';
+                startBtn.disabled = false;
+                startBtn.textContent = '🔴 Bắt đầu quay video';
+                stopBtn.style.display = 'none';
+                statusDiv.style.display = 'none';
+                
+                // Show success message
+                const filename = data.filename || 'video';
+                alert(`✅ Đã lưu video: ${filename}\nVideo đã được lưu trên Pi.`);
+            } else {
+                throw new Error(data.error || 'Lỗi dừng quay video');
+            }
+        } catch (error) {
+            console.error('Stop video error:', error);
+            alert('Lỗi: ' + error.message);
+            stopBtn.disabled = false;
+            stopBtn.textContent = '⏹️ Dừng quay video';
+        }
+    }
+    
+    // Poll video status (kiểm tra xem có đang quay không)
+    async function pollVideoStatus() {
+        if (!videoRecordingState.isRecording) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/video/status/');
+            const data = await response.json();
+            
+            // Nếu không còn recording (có thể bị lỗi hoặc timeout)
+            if (!data.recording && videoRecordingState.isRecording) {
+                console.warn('Recording stopped unexpectedly');
+                // Reset UI
+                videoRecordingState.isRecording = false;
+                if (videoRecordingState.durationInterval) {
+                    clearInterval(videoRecordingState.durationInterval);
+                    videoRecordingState.durationInterval = null;
+                }
+                
+                document.getElementById('startVideoBtn').style.display = 'inline-block';
+                document.getElementById('stopVideoBtn').style.display = 'none';
+                document.getElementById('videoStatus').style.display = 'none';
+                
+                alert('⚠️ Quay video đã dừng bất ngờ. Vui lòng thử lại.');
+            }
+        } catch (error) {
+            console.error('Poll status error:', error);
+        }
+        
+        // Poll lại sau 5 giây nếu vẫn đang recording
+        if (videoRecordingState.isRecording) {
+            videoRecordingState.statusPollInterval = setTimeout(pollVideoStatus, 5000);
+        }
+    }
+    
+    // Kiểm tra trạng thái khi trang load (để khôi phục UI nếu đang quay)
+    async function checkVideoStatusOnLoad() {
+        try {
+            const response = await fetch('/api/video/status/');
+            const data = await response.json();
+            
+            if (data.recording) {
+                // Nếu đang quay, khôi phục UI (nhưng không biết startTime nên không hiển thị duration chính xác)
+                videoRecordingState.isRecording = true;
+                document.getElementById('startVideoBtn').style.display = 'none';
+                document.getElementById('stopVideoBtn').style.display = 'inline-block';
+                document.getElementById('videoStatus').style.display = 'block';
+                document.getElementById('videoDuration').textContent = '--:--';
+                
+                // Start polling
+                pollVideoStatus();
+            }
+        } catch (error) {
+            console.error('Check video status error:', error);
+        }
+    }
+    
+    // Gọi khi trang load
+    checkVideoStatusOnLoad();
 </script>
 
 <!-- Analysis Result Panel -->

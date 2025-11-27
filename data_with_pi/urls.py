@@ -41,4 +41,8 @@ urlpatterns = [
     path('api/ui/settings/definitions/', views.api_get_ui_settings_definitions, name='api_get_ui_settings_definitions'),
     path('api/ui/settings/current/', views.api_get_current_ui_settings, name='api_get_current_ui_settings'),
     path('api/ui/settings/apply/', views.api_apply_ui_settings, name='api_apply_ui_settings'),
+        # Video recording endpoints (tạm thời)
+    path('api/video/start/', views.api_start_video_recording, name='api_start_video_recording'),
+    path('api/video/stop/', views.api_stop_video_recording, name='api_stop_video_recording'),
+    path('api/video/status/', views.api_get_video_recording_status, name='api_get_video_recording_status'),
 ]
