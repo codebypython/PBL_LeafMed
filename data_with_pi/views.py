@@ -106,6 +106,18 @@ def search(request):
 
 
 @login_required
+def record(request):
+    """Trang quay video - yêu cầu đăng nhập"""
+    status = pi_client.get_status()
+    stream_url = pi_client.get_stream_url()
+    return render(request, 'record.html', {
+        'stream_url': stream_url,
+        'pi_status': status,
+        'pi_base': pi_client.base_url,
+    })
+
+
+@login_required
 @require_http_methods(["POST"])
 def api_save_capture_result(request):
     """API endpoint: Lưu kết quả phân tích vào database khi người dùng click 'Lưu'"""
@@ -281,6 +293,15 @@ def plant_detail(request, plant_id):
         'recent_captures': recent_captures,
         'recipes': recipes,
         'pi_base': pi_client.base_url,
+    })
+
+
+@login_required
+def test(request):
+    """Trang test - copy của search page để test các tính năng mới"""
+    return render(request, 'test.html', {
+        'pi_base': pi_client.base_url,
+        'stream_url': pi_client.get_stream_url(),
     })
 
 
