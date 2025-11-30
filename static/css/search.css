@@ -165,10 +165,14 @@
 
 .analysis-image-section img {
     max-width: 100%;
-    max-height: 400px;
+    max-height: 500px;
+    width: auto;
+    height: auto;
     border-radius: var(--border-radius-sm);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     object-fit: contain;
+    display: block;
+    margin: 0 auto;
 }
 
 .analysis-info-grid {
@@ -339,4 +343,192 @@
 .analysis-panel-footer .btn-save:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* YOLO Detection Styles */
+.yolo-detection-status {
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.yolo-detection-status.info {
+  background: rgba(54, 162, 235, 0.1);
+  color: #36a2eb;
+  border: 1px solid rgba(54, 162, 235, 0.3);
+}
+
+.yolo-detection-status.success {
+  background: rgba(75, 192, 192, 0.1);
+  color: #4bc0c0;
+  border: 1px solid rgba(75, 192, 192, 0.3);
+}
+
+.yolo-detection-status.error {
+  background: rgba(255, 99, 132, 0.1);
+  color: #ff6384;
+  border: 1px solid rgba(255, 99, 132, 0.3);
+}
+
+.yolo-crop-panel {
+  position: fixed;
+  top: 50%;
+  right: 2rem;
+  transform: translateY(-50%);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 1700;
+  min-width: 280px;
+  max-width: 320px;
+}
+
+.crop-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--primary);
+  color: white;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.crop-panel-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.crop-panel-header button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.crop-panel-header button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.crop-panel-body {
+  padding: 1rem;
+}
+
+.crop-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.crop-status {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.85rem;
+}
+
+.crop-status.info {
+  background: rgba(54, 162, 235, 0.1);
+  color: #36a2eb;
+}
+
+.crop-status.success {
+  background: rgba(75, 192, 192, 0.1);
+  color: #4bc0c0;
+}
+
+.crop-status.error {
+  background: rgba(255, 99, 132, 0.1);
+  color: #ff6384;
+}
+
+.cropped-image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.cropped-image-modal .modal-content {
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.cropped-image-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--primary);
+  color: white;
+}
+
+.cropped-image-modal .modal-body {
+  padding: 1rem;
+  text-align: center;
+}
+
+.cropped-image-modal .modal-body img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: var(--border-radius-sm);
+}
+
+.yolo-controls-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-primary);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.yolo-controls-section h4 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.yolo-confidence-control {
+  margin-bottom: 1rem;
+}
+
+.yolo-confidence-control label {
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .yolo-crop-panel {
+    right: 1rem;
+    left: 1rem;
+    transform: translateY(-50%);
+    min-width: unset;
+    max-width: unset;
+  }
+  
+  .crop-actions {
+    flex-direction: row;
+  }
 }

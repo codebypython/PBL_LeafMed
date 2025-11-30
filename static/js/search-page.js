@@ -95,6 +95,7 @@ function setupUploadFunctionality() {
     const imageInput = document.getElementById('imageInput');
     const previewImage = document.getElementById('previewImage');
     const uploadBtn = document.getElementById('uploadBtn');
+    const uploadForm = document.getElementById('uploadForm');
     
     if (!uploadArea || !imageInput) return;
     
@@ -128,6 +129,14 @@ function setupUploadFunctionality() {
             handleFileSelect(e.target.files[0]);
         }
     });
+    
+    // Handle form submission with AJAX and show analysis panel
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            handleUploadAndAnalyze();
+        });
+    }
 }
 
 function handleFileSelect(file) {
@@ -154,6 +163,75 @@ function handleFileSelect(file) {
         uploadBtn.disabled = false;
     };
     reader.readAsDataURL(file);
+}
+
+function handleUploadAndAnalyze() {
+    const imageInput = document.getElementById('imageInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const previewImage = document.getElementById('previewImage');
+    
+    if (!imageInput.files || !imageInput.files[0]) {
+        alert('Vui lòng chọn file ảnh!');
+        return;
+    }
+    
+    const file = imageInput.files[0];
+    const originalBtnText = uploadBtn.textContent;
+    
+    // Step 1: Show loading state
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = '📤 Đang tải lên...';
+    
+    // Step 2: Prepare form data
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    // Step 3: Upload and get preview image URL
+    const previewImageUrl = previewImage.src;
+    
+    // Step 4: Show analysis panel with loading state
+    uploadBtn.textContent = '🔍 Đang phân tích...';
+    showAnalysisPanelLoading({
+        file: file.name,
+        image_url: previewImageUrl,
+        image_size_bytes: file.size
+    });
+    
+    // Step 5: Upload to server
+    fetch('/api/upload/analyze/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(analysisResult => {
+        // Step 6: Update panel with analysis result
+        uploadBtn.textContent = '✅ Hoàn thành!';
+        updateAnalysisPanelWithResult(analysisResult);
+        
+        // Reset form
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = originalBtnText;
+    })
+    .catch(error => {
+        console.error('Upload/Analysis error:', error);
+        
+        if (currentAnalysisData) {
+            updateAnalysisPanelWithError(error.message);
+        } else {
+            alert('Lỗi: ' + error.message);
+        }
+        
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = originalBtnText;
+    });
 }
 
 // ============================================================
@@ -243,14 +321,16 @@ function setupCaptureForm() {
 }
 
 function getCapturedImageUrl(data) {
-    if (data.image_b64_thumbnail) {
-        return 'data:image/jpeg;base64,' + data.image_b64_thumbnail;
-    } else if (data.image_b64) {
-        return 'data:image/jpeg;base64,' + data.image_b64;
-    } else if (data.image_url) {
+    // Ưu tiên dùng image_url hoặc file path để có ảnh full size, tránh dùng thumbnail bị resize sai tỷ lệ
+    if (data.image_url) {
         return data.image_url.startsWith('/') ? window.PI_BASE_URL + data.image_url : data.image_url;
     } else if (data.file) {
         return window.PI_BASE_URL + '/history/image/' + data.file;
+    } else if (data.image_b64) {
+        return 'data:image/jpeg;base64,' + data.image_b64;
+    } else if (data.image_b64_thumbnail) {
+        // Chỉ dùng thumbnail khi không có lựa chọn nào khác
+        return 'data:image/jpeg;base64,' + data.image_b64_thumbnail;
     }
     return '';
 }
@@ -317,19 +397,9 @@ function showAnalysisPanelLoading(previewData) {
         </div>
         
         <div class="analysis-info-grid">
-            <div class="analysis-info-card">
-                <h3>🌿 Tên tiếng Việt</h3>
-                <p class="value"><span class="loading-skeleton"></span></p>
-            </div>
-            
-            <div class="analysis-info-card">
-                <h3>🔬 Tên khoa học</h3>
-                <p class="value"><span class="loading-skeleton"></span></p>
-            </div>
-            
-            <div class="analysis-info-card">
-                <h3>🌍 Tên tiếng Anh</h3>
-                <p class="value"><span class="loading-skeleton"></span></p>
+            <div class="analysis-info-card" style="grid-column: 1 / -1;">
+                <h3>🔬 Tên nhận diện</h3>
+                <p class="value" style="font-size: 1.2rem; font-weight: 600; color: var(--primary-color);"><span class="loading-skeleton"></span></p>
             </div>
             
             <div class="analysis-info-card">
@@ -345,37 +415,17 @@ function showAnalysisPanelLoading(previewData) {
             </div>
             
             <div class="analysis-info-card">
-                <h3>📏 Kích thước ảnh</h3>
-                <p class="value">${previewData.image_size_bytes ? (previewData.image_size_bytes / 1024).toFixed(1) + ' KB' : 'N/A'}</p>
-            </div>
-            
-            <div class="analysis-info-card">
-                <h3>📅 Thời gian</h3>
+                <h3>📅 Thời gian chụp</h3>
                 <p class="value">${new Date().toLocaleString('vi-VN')}</p>
             </div>
-        </div>
-        
-        <div class="analysis-detail-section">
-            <h3>📝 Mô tả chi tiết</h3>
-            <div class="analysis-detail-content"><span class="loading-skeleton"></span></div>
-        </div>
-        
-        <div class="analysis-detail-section">
-            <h3>💊 Công dụng</h3>
-            <div class="analysis-detail-content"><span class="loading-skeleton"></span></div>
-        </div>
-        
-        <div class="analysis-detail-section">
-            <h3>📍 Vị trí phân bố</h3>
-            <div class="analysis-detail-content"><span class="loading-skeleton"></span></div>
         </div>
     `;
     
     if (panelFooter) {
         panelFooter.innerHTML = `
             <button class="btn btn-secondary" onclick="closeAnalysisPanel()">Đóng</button>
-            <button class="btn btn-primary btn-save" id="saveResultBtn" disabled>
-                💾 Lưu kết quả
+            <button class="btn btn-primary btn-save" id="viewDetailsBtn" onclick="viewPlantDetails()" disabled>
+                🔍 Xem chi tiết
             </button>
         `;
     }
@@ -436,19 +486,9 @@ function updateAnalysisPanelWithResult(analysisResult) {
         </div>
         
         <div class="analysis-info-grid">
-            <div class="analysis-info-card">
-                <h3>🌿 Tên tiếng Việt</h3>
-                <p class="value">${escapeHtml(analysisResult.name || 'Đang phân tích...')}</p>
-            </div>
-            
-            <div class="analysis-info-card">
-                <h3>🔬 Tên khoa học</h3>
-                <p class="value empty">Chưa có thông tin</p>
-            </div>
-            
-            <div class="analysis-info-card">
-                <h3>🌍 Tên tiếng Anh</h3>
-                <p class="value empty">Chưa có thông tin</p>
+            <div class="analysis-info-card" style="grid-column: 1 / -1;">
+                <h3>🔬 Tên nhận diện</h3>
+                <p class="value" style="font-size: 1.2rem; font-weight: 600; color: var(--primary-color);">${escapeHtml(analysisResult.name || 'Đang phân tích...')}</p>
             </div>
             
             <div class="analysis-info-card">
@@ -464,37 +504,17 @@ function updateAnalysisPanelWithResult(analysisResult) {
             </div>
             
             <div class="analysis-info-card">
-                <h3>📏 Kích thước ảnh</h3>
-                <p class="value">${currentAnalysisData.image_size_bytes ? (currentAnalysisData.image_size_bytes / 1024).toFixed(1) + ' KB' : 'N/A'}</p>
-            </div>
-            
-            <div class="analysis-info-card">
-                <h3>📅 Thời gian</h3>
+                <h3>📅 Thời gian chụp</h3>
                 <p class="value">${new Date().toLocaleString('vi-VN')}</p>
             </div>
-        </div>
-        
-        <div class="analysis-detail-section">
-            <h3>📝 Mô tả chi tiết</h3>
-            <div class="analysis-detail-content empty">Chưa có thông tin</div>
-        </div>
-        
-        <div class="analysis-detail-section">
-            <h3>💊 Công dụng</h3>
-            <div class="analysis-detail-content empty">Chưa có thông tin</div>
-        </div>
-        
-        <div class="analysis-detail-section">
-            <h3>📍 Vị trí phân bố</h3>
-            <div class="analysis-detail-content empty">Chưa có thông tin</div>
         </div>
     `;
     
     if (panelFooter) {
         panelFooter.innerHTML = `
             <button class="btn btn-secondary" onclick="closeAnalysisPanel()">Đóng</button>
-            <button class="btn btn-primary btn-save" id="saveResultBtn" onclick="saveAnalysisResult()" ${isNotSavable ? 'disabled' : ''}>
-                💾 Lưu kết quả
+            <button class="btn btn-primary btn-save" id="viewDetailsBtn" onclick="viewPlantDetails()" ${isNotSavable ? 'disabled' : ''}>
+                🔍 Xem chi tiết
             </button>
         `;
     }
@@ -521,133 +541,64 @@ function updateAnalysisPanelWithError(errorMessage) {
     }
 }
 
-function saveAnalysisResult() {
-    if (!currentAnalysisData || currentAnalysisData.loading || currentAnalysisData.isNotSavable) {
+function viewPlantDetails() {
+    if (!currentAnalysisData) {
+        alert('Không có dữ liệu để lưu!');
         return;
     }
-    
-    const saveBtn = document.getElementById('saveResultBtn');
-    const originalText = saveBtn.textContent;
-    saveBtn.disabled = true;
-    saveBtn.textContent = '⏳ Đang lưu...';
-    
+
+    if (currentAnalysisData.isNotSavable) {
+        alert('Kết quả này không thể lưu!');
+        return;
+    }
+
+    const btn = document.getElementById('viewDetailsBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Đang lưu...';
+    }
+
+    // Save result first, then redirect to plant detail page
     fetch('/api/capture/save/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCsrfToken(),
             'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
         },
         body: JSON.stringify({
             name: currentAnalysisData.name,
             confidence: currentAnalysisData.confidence,
             file: currentAnalysisData.file,
             image_url: currentAnalysisData.image_url,
-            image_size_bytes: currentAnalysisData.image_size_bytes
-        }),
+            raw: currentAnalysisData
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const panelBody = document.getElementById('analysisPanelBody');
-            const successBadge = document.createElement('div');
-            successBadge.className = 'analysis-success-badge';
-            successBadge.style.marginBottom = '1rem';
-            successBadge.innerHTML = '✅ ' + data.message;
-            
-            panelBody.insertBefore(successBadge, panelBody.firstChild);
-            
-            saveBtn.textContent = '✅ Đã lưu';
-            saveBtn.disabled = true;
-            saveBtn.classList.remove('btn-primary');
-            saveBtn.classList.add('btn-secondary');
-            
-            currentAnalysisData.saved = true;
-            
-            if (data.result) {
-                updatePanelWithFullData(data.result);
+            // Get plant_id from response and redirect to plant detail page
+            if (data.plant_id) {
+                window.location.href = `/plant/${data.plant_id}/`;
+            } else {
+                alert('Lưu thành công nhưng không tìm thấy thông tin cây!');
+                closeAnalysisPanel();
             }
         } else {
-            throw new Error(data.error || 'Lỗi lưu kết quả');
+            alert('Lỗi lưu kết quả: ' + (data.error || 'Unknown error'));
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '🔍 Xem chi tiết';
+            }
         }
     })
     .catch(error => {
         console.error('Save error:', error);
-        alert('Lỗi: ' + error.message);
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalText;
+        alert('Lỗi kết nối: ' + error.message);
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '🔍 Xem chi tiết';
+        }
     });
-}
-
-function updatePanelWithFullData(fullData) {
-    const panelBody = document.getElementById('analysisPanelBody');
-    
-    const nameCard = panelBody.querySelector('.analysis-info-card:nth-child(2) .value');
-    if (nameCard) {
-        nameCard.textContent = fullData.vietnamese_name || fullData.name || '';
-        nameCard.classList.remove('empty');
-    }
-    
-    const scientificCard = panelBody.querySelector('.analysis-info-card:nth-child(3) .value');
-    if (scientificCard && fullData.scientific_name) {
-        scientificCard.textContent = fullData.scientific_name;
-        scientificCard.classList.remove('empty');
-    }
-    
-    const englishCard = panelBody.querySelector('.analysis-info-card:nth-child(4) .value');
-    if (englishCard && fullData.english_name) {
-        englishCard.textContent = fullData.english_name;
-        englishCard.classList.remove('empty');
-    }
-    
-    if (fullData.description) {
-        const descSection = panelBody.querySelector('.analysis-detail-section:nth-child(4) .analysis-detail-content');
-        if (descSection) {
-            descSection.textContent = fullData.description;
-            descSection.classList.remove('empty');
-        }
-    }
-    
-    if (fullData.usage) {
-        const usageSection = panelBody.querySelector('.analysis-detail-section:nth-child(5) .analysis-detail-content');
-        if (usageSection) {
-            usageSection.textContent = fullData.usage;
-            usageSection.classList.remove('empty');
-        }
-    }
-    
-    if (fullData.common_locations) {
-        const locationSection = panelBody.querySelector('.analysis-detail-section:nth-child(6) .analysis-detail-content');
-        if (locationSection) {
-            locationSection.textContent = fullData.common_locations;
-            locationSection.classList.remove('empty');
-        }
-    }
-    
-    if (fullData.biological_info) {
-        let bioSection = panelBody.querySelector('.analysis-detail-section:nth-child(7)');
-        if (!bioSection) {
-            bioSection = document.createElement('div');
-            bioSection.className = 'analysis-detail-section';
-            bioSection.innerHTML = `
-                <h3>🔬 Thông tin sinh học</h3>
-                <div class="analysis-detail-content">${escapeHtml(fullData.biological_info)}</div>
-            `;
-            panelBody.appendChild(bioSection);
-        }
-    }
-    
-    if (fullData.medicinal_info) {
-        let medSection = panelBody.querySelector('.analysis-detail-section:nth-child(8)');
-        if (!medSection) {
-            medSection = document.createElement('div');
-            medSection.className = 'analysis-detail-section';
-            medSection.innerHTML = `
-                <h3>💉 Thông tin dược liệu</h3>
-                <div class="analysis-detail-content">${escapeHtml(fullData.medicinal_info)}</div>
-            `;
-            panelBody.appendChild(medSection);
-        }
-    }
 }
 
 function closeAnalysisPanel() {
@@ -786,7 +737,7 @@ function escapeHtml(text) {
 window.toggleSidebar = toggleSidebar;
 window.showTab = showTab;
 window.closeAnalysisPanel = closeAnalysisPanel;
-window.saveAnalysisResult = saveAnalysisResult;
+window.viewPlantDetails = viewPlantDetails;
 window.updateUISettingDisplay = updateUISettingDisplay;
 window.debouncedApplyUISetting = debouncedApplyUISetting;
 window.adjustUISetting = adjustUISetting;

@@ -28,10 +28,11 @@
             
             <!-- Tab Camera -->
             <div id="camera-tab" class="tab-content">
-                <div class="stream-container">
+                <div class="stream-container" style="position: relative;">
                     <div class="stream-wrapper">
                         <img src="{{ stream_url }}" alt="Pi Stream" class="stream-image" id="streamImage">
-                        <div class="stream-overlay" id="streamOverlay" style="display: none;">
+                        <canvas id="yoloOverlayCanvas" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
+                        <div class="stream-overlay" id="streamOverlay">
                             <div class="spinner"></div>
                             <p style="margin-top: 1rem; color: white;">Đang xử lý...</p>
                         </div>
@@ -107,6 +108,27 @@
                 </div>
                 
                 <p id="presetStatus" style="color: var(--text-muted); font-size: 0.85rem; margin: 0;"></p>
+            </div>
+            
+            <!-- YOLO Leaf Detection Controls -->
+            <div class="yolo-controls-section">
+                <h4>🤖 Nhận diện lá tự động (AI)</h4>
+                
+                <div class="yolo-confidence-control">
+                    <label>Độ tin cậy tối thiểu: <span id="confidenceValue">35%</span></label>
+                    <input type="range" id="yoloConfidence" min="10" max="90" value="35" 
+                           oninput="updateConfidenceDisplay(this.value)" class="form-control">
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-primary" id="yoloToggleBtn" onclick="toggleYOLODetection()" style="flex: 1; font-size: 0.85rem;">
+                        🔍 Bắt đầu quét lá
+                    </button>
+                </div>
+                
+                <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.5rem;">
+                    💡 Nhấn vào khung xanh trên video để cắt và phân tích lá
+                </small>
             </div>
             
             <!-- Save Current Settings -->
@@ -283,10 +305,25 @@
   <script src="{% static 'js/search.js' %}"></script>
   <script src="{% static 'js/camera-controls.js' %}"></script>
   <script src="{% static 'js/search-page.js' %}"></script>
+  <script src="{% static 'js/yolo-detection.js' %}"></script>
   <script>
     // Global configuration - Pass Django template variables to JavaScript
     window.PI_BASE_URL = '{{ pi_base }}';
     window.STREAM_URL = '{{ stream_url }}';
+    
+    // Initialize YOLO detector when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize YOLO detector
+        window.yoloDetector = new YOLOLeafDetector('streamImage', 'yoloOverlayCanvas');
+    });
+    
+    // Update confidence display
+    function updateConfidenceDisplay(value) {
+        document.getElementById('confidenceValue').textContent = value + '%';
+        if (window.yoloDetector) {
+            window.yoloDetector.setConfidence(value / 100);
+        }
+    }
   </script>
 
 <!-- Analysis Result Panel -->
