@@ -20,6 +20,7 @@
                 {% if user.is_authenticated %}
                     <a href="{% url 'home' %}" class="btn btn-outline btn-sm">Trang chủ</a>
                     <a href="{% url 'search' %}" class="btn btn-primary btn-sm">Tra cứu</a>
+                    <a href="{% url 'record' %}" class="btn btn-secondary btn-sm">Quay video</a>
                     <a href="{% url 'history' %}" class="btn btn-secondary btn-sm">Lịch sử</a>
                 {% endif %}
             </div>
