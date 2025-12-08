@@ -641,26 +641,23 @@
     setInterval(checkPiStatus, 30000);
     loadUnifiedPresets(); // Load unified presets khi trang load
     
-    // Load camera status từ StatusBoard khi trang load
-    // Đợi một chút để đảm bảo StatusBoard đã khởi tạo
+    // Load camera settings CHỈ MỘT LẦN khi trang load
+    // Không auto-refresh - theo pattern của các ứng dụng camera chuyên nghiệp
     setTimeout(async () => {
         if (window.CameraStatusBoard) {
             await window.CameraStatusBoard.loadFromCamera();
-            refreshCameraStatus(); // Update UI từ StatusBoard
+            refreshCameraStatus();
         } else {
-            refreshCameraStatus(); // Fallback
+            refreshCameraStatus();
         }
     }, 500);
     
-    // Auto-refresh camera status every 5 seconds
-    setInterval(async () => {
-        if (window.CameraStatusBoard) {
-            await window.CameraStatusBoard.loadFromCamera();
-            refreshCameraStatus();
-        } else {
-            refreshCameraStatus();
-        }
-    }, 5000);
+    // CHỈ polling cho system status (online/offline), KHÔNG polling camera settings
+    // Camera settings sử dụng Optimistic Update - UI là source of truth
+    // Không cần auto-refresh vì:
+    // 1. Thường chỉ có 1 user điều khiển camera
+    // 2. User expect slider giữ nguyên giá trị họ đã set
+    // 3. Giảm complexity và network traffic
     
     // Load resolution profiles khi trang load
     if (window.loadResolutionProfiles) {
@@ -1344,16 +1341,39 @@
     
     /**
      * Debounced apply - Tự động apply sau khi user ngừng điều chỉnh
-     * QUAN TRỌNG: Chỉ apply khi user thực sự điều chỉnh, KHÔNG apply khi update programmatically
+     * 
+     * OPTIMISTIC UPDATE PATTERN:
+     * - UI cập nhật ngay lập tức (không đợi server)
+     * - Gửi request đến server (background)
+     * - Nếu error → hiển thị thông báo, KHÔNG reset slider
+     * - Slider giữ nguyên giá trị user đã set
      */
     function debouncedApplyUISetting(settingName, elementId) {
         const element = document.getElementById(elementId);
         
-        // QUAN TRỌNG: Skip nếu đang update programmatically (từ server)
-        // Điều này tránh loop: update từ server → trigger oninput → apply lại → update từ server
+        // Skip nếu đang update programmatically (chỉ khi load lần đầu)
         if (element && element.dataset.programmaticUpdate === 'true') {
             console.log(`[UI] Skipping debounced apply for ${settingName} - programmatic update in progress`);
             return;
+        }
+        
+        // Handle conflict giữa sharpness và background_blur
+        // Cả hai đều điều khiển cùng camera parameter (Sharpness)
+        if (settingName === 'sharpness') {
+            const blurSlider = document.getElementById('backgroundBlur');
+            if (blurSlider && parseFloat(blurSlider.value) > 0) {
+                blurSlider.value = 0;
+                updateUISettingDisplay('backgroundBlur', 0);
+                console.log('[UI] Reset background_blur to 0 (conflict with sharpness)');
+            }
+        } else if (settingName === 'background_blur') {
+            const sharpnessSlider = document.getElementById('sharpness');
+            const currentSharpness = parseFloat(sharpnessSlider?.value) || 100;
+            if (sharpnessSlider && currentSharpness !== 100) {
+                sharpnessSlider.value = 100;
+                updateUISettingDisplay('sharpness', 100);
+                console.log('[UI] Reset sharpness to 100% (conflict with background_blur)');
+            }
         }
         
         // Clear existing timer
@@ -1361,11 +1381,9 @@
             clearTimeout(debounceTimers[settingName]);
         }
         
-        // Set new timer (300ms delay)
+        // Set new timer (300ms delay - đủ để user điều chỉnh thoải mái)
         debounceTimers[settingName] = setTimeout(() => {
-            // Double check: vẫn skip nếu đang update programmatically
             if (element && element.dataset.programmaticUpdate === 'true') {
-                console.log(`[UI] Skipping apply for ${settingName} - still programmatic update`);
                 return;
             }
             applyUISettingSafe(settingName, elementId);
@@ -1374,6 +1392,7 @@
     
     /**
      * Adjust UI setting by step (dùng cho nút +/-)
+     * OPTIMISTIC UPDATE: UI cập nhật ngay, gửi request background
      */
     function adjustUISetting(elementId, step) {
         const element = document.getElementById(elementId);
@@ -1391,12 +1410,27 @@
         let newValue = currentValue + (step * stepValue);
         newValue = Math.max(min, Math.min(max, newValue));
         
-        // Update slider và display
+        // Update slider và display NGAY LẬP TỨC (Optimistic Update)
         element.value = newValue;
         updateUISettingDisplay(elementId, newValue);
         
-        // Apply immediately (no debounce for button clicks)
+        // Handle conflict giữa sharpness và background_blur
         const settingName = settingNameMap[elementId];
+        if (settingName === 'sharpness') {
+            const blurSlider = document.getElementById('backgroundBlur');
+            if (blurSlider && parseFloat(blurSlider.value) > 0) {
+                blurSlider.value = 0;
+                updateUISettingDisplay('backgroundBlur', 0);
+            }
+        } else if (settingName === 'background_blur') {
+            const sharpnessSlider = document.getElementById('sharpness');
+            if (sharpnessSlider && parseFloat(sharpnessSlider.value) !== 100) {
+                sharpnessSlider.value = 100;
+                updateUISettingDisplay('sharpness', 100);
+            }
+        }
+        
+        // Apply to camera (background, không block UI)
         if (settingName) {
             applyUISettingSafe(settingName, elementId);
         }
