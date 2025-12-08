@@ -1,11 +1,12 @@
 /**
- * Camera Status Board - Single Source of Truth
+ * Camera Status Board - Simplified
  * 
- * Luồng hoạt động:
- * 1. Load từ camera -> Cập nhật StatusBoard -> Cập nhật UI từ StatusBoard
- * 2. User thay đổi -> Apply lên camera -> Đọc lại từ camera -> Cập nhật StatusBoard -> Cập nhật UI từ StatusBoard
+ * Chỉ load từ server khi cần thiết:
+ * 1. Lần đầu khi trang load
+ * 2. Sau khi apply preset
+ * 3. User click nút refresh thủ công
  * 
- * StatusBoard là nguồn dữ liệu duy nhất, UI chỉ đọc từ StatusBoard
+ * KHÔNG auto-refresh - theo pattern của các ứng dụng camera chuyên nghiệp
  */
 
 class CameraStatusBoard {
@@ -79,14 +80,12 @@ class CameraStatusBoard {
     updateTechnicalSettings(settings) {
         if (!settings || typeof settings !== 'object') return;
         
-        // Cập nhật từng field nếu có
         Object.keys(this.technicalSettings).forEach(key => {
             if (settings[key] !== undefined && settings[key] !== null) {
                 this.technicalSettings[key] = settings[key];
             }
         });
         
-        // Cập nhật framerate nếu có
         if (settings.framerate !== undefined) {
             this.technicalSettings.framerate = settings.framerate;
         }
@@ -104,27 +103,14 @@ class CameraStatusBoard {
             return;
         }
         
-        // Cập nhật từng field nếu có
-        const oldSettings = { ...this.uiSettings };
-        let hasChanges = false;
-        
         Object.keys(this.uiSettings).forEach(key => {
             const newValue = parseFloat(uiSettings[key]);
             if (uiSettings[key] !== undefined && uiSettings[key] !== null && !isNaN(newValue)) {
-                const oldValue = this.uiSettings[key];
                 this.uiSettings[key] = newValue;
-                if (Math.abs(oldValue - newValue) > 0.01) {
-                    hasChanges = true;
-                    console.log(`[StatusBoard] ${key}: ${oldValue} → ${newValue}`);
-                }
             }
         });
         
-        // LUÔN notify để đảm bảo UI được cập nhật (ngay cả khi giá trị không thay đổi)
-        // Vì có thể camera đã apply nhưng giá trị trả về giống với giá trị cũ
         console.log('[StatusBoard] UI settings updated:', this.uiSettings);
-        console.log('[StatusBoard] Previous settings:', oldSettings);
-        // Notify ngay lập tức để UI cập nhật
         this.notify('ui_settings', { ...this.uiSettings });
     }
     
@@ -160,7 +146,7 @@ class CameraStatusBoard {
     
     /**
      * Load tất cả thông tin từ camera
-     * Đây là hàm chính để sync StatusBoard với camera
+     * CHỈ gọi khi cần thiết (lần đầu, sau preset, user click refresh)
      */
     async loadFromCamera() {
         try {
@@ -178,47 +164,22 @@ class CameraStatusBoard {
             const cameraData = await cameraResponse.json();
             
             if (!cameraData.error) {
-                // Handle different response formats
-                let settings = null;
-                if (cameraData.settings) {
-                    settings = cameraData.settings;
-                } else if (cameraData.success && cameraData.settings) {
-                    settings = cameraData.settings;
-                } else if (!cameraData.error) {
-                    settings = cameraData;
-                }
-                
+                let settings = cameraData.settings || cameraData;
                 if (settings) {
                     this.updateTechnicalSettings(settings);
                 }
             }
             
-            // Load UI settings (converted từ technical)
-            // QUAN TRỌNG: Đợi một chút để đảm bảo camera đã apply settings trước đó
-            // Tăng delay để đảm bảo camera đã hoàn tất việc apply
-            await new Promise(resolve => setTimeout(resolve, 400));
-            
+            // Load UI settings
             const uiResponse = await fetch('/api/ui/settings/current/');
             const uiData = await uiResponse.json();
             
             if (!uiData.error) {
-                let uiSettings = null;
-                if (uiData.ui_settings) {
-                    uiSettings = uiData.ui_settings;
-                } else if (uiData.success && uiData.ui_settings) {
-                    uiSettings = uiData.ui_settings;
-                } else if (uiData.brightness !== undefined || uiData.sharpness !== undefined) {
-                    uiSettings = uiData;
-                }
-                
+                let uiSettings = uiData.ui_settings || uiData;
                 if (uiSettings) {
                     console.log('[StatusBoard] Received UI settings from camera:', uiSettings);
                     this.updateUISettings(uiSettings);
-                } else {
-                    console.warn('[StatusBoard] No UI settings in response:', uiData);
                 }
-            } else {
-                console.error('[StatusBoard] Error loading UI settings:', uiData.error);
             }
             
             // Load resolution info
@@ -279,7 +240,7 @@ let cameraStatusBoard = null;
 function initializeCameraStatusBoard() {
     if (!cameraStatusBoard) {
         cameraStatusBoard = new CameraStatusBoard();
-        window.CameraStatusBoard = cameraStatusBoard; // Export globally
+        window.CameraStatusBoard = cameraStatusBoard;
     }
     return cameraStatusBoard;
 }
@@ -298,4 +259,3 @@ window.reloadCameraStatusToBoard = async function() {
     }
     await cameraStatusBoard.loadFromCamera();
 };
-
