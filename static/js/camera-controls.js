@@ -16,13 +16,15 @@
 
 class CameraState {
     constructor() {
+        // UI Settings: -100% đến +100% với 0% = mặc định
+        // Zoom: 1x đến 4x (giống các app camera)
+        // Thiết kế giống Adobe Lightroom, Snapseed
         this.uiSettings = {
-            zoom: 100,
-            brightness: 0,
-            sharpness: 100,
-            contrast: 100,
-            saturation: 100,
-            background_blur: 0
+            zoom: 1.0,          // 1x = không zoom (1.0 - 4.0)
+            brightness: 0,      // 0% = mặc định (EV = 0)
+            sharpness: 0,       // 0% = mặc định (Sharpness = 1.0)
+            contrast: 0,        // 0% = mặc định (Contrast = 1.0)
+            saturation: 0       // 0% = mặc định (Saturation = 1.0)
         };
         this.isApplying = false;
         this.listeners = [];
@@ -138,39 +140,35 @@ class CameraUI {
         this.elements.contrastValue = document.getElementById('contrastValue');
         this.elements.saturation = document.getElementById('saturation');
         this.elements.saturationValue = document.getElementById('saturationValue');
-        this.elements.backgroundBlur = document.getElementById('backgroundBlur');
-        this.elements.backgroundBlurValue = document.getElementById('backgroundBlurValue');
     }
     
     /**
      * Update UI với settings từ server
      * CHỈ gọi khi: load lần đầu, sau preset, hoặc user click refresh thủ công
+     * 
+     * RANGE: -100% đến +100% với 0% = mặc định (trừ zoom: 100-400%)
+     * Thiết kế giống Adobe Lightroom, Snapseed
      */
     updateUISettings(uiSettings) {
         console.log('[UI] Updating UI with settings:', uiSettings);
         
         // Validate và normalize settings
+        // Zoom: 1.0 - 4.0 (1x - 4x)
+        // Các setting khác: -100% đến +100% với 0% = mặc định
         const normalizedSettings = {
-            zoom: parseFloat(uiSettings.zoom) || 100,
-            brightness: parseFloat(uiSettings.brightness) || 0,
-            sharpness: parseFloat(uiSettings.sharpness) || 100,
-            contrast: parseFloat(uiSettings.contrast) || 100,
-            saturation: parseFloat(uiSettings.saturation) || 100,
-            background_blur: parseFloat(uiSettings.background_blur) || 0
+            zoom: parseFloat(uiSettings.zoom) || 1.0,
+            brightness: parseFloat(uiSettings.brightness) ?? 0,
+            sharpness: parseFloat(uiSettings.sharpness) ?? 0,
+            contrast: parseFloat(uiSettings.contrast) ?? 0,
+            saturation: parseFloat(uiSettings.saturation) ?? 0
         };
         
-        // Xử lý conflict giữa sharpness và background_blur
-        if (normalizedSettings.sharpness >= 100) {
-            normalizedSettings.background_blur = 0;
-        }
-        
-        // Update từng control
-        this.updateControl('zoom', normalizedSettings.zoom, 100, 400);
+        // Update từng control với range tương ứng
+        this.updateControl('zoom', normalizedSettings.zoom, 1, 4, false, true);  // isZoom = true
         this.updateControl('brightness', normalizedSettings.brightness, -100, 100, true);
-        this.updateControl('sharpness', normalizedSettings.sharpness, 0, 200);
-        this.updateControl('contrast', normalizedSettings.contrast, 0, 200);
-        this.updateControl('saturation', normalizedSettings.saturation, 0, 200);
-        this.updateControl('backgroundBlur', normalizedSettings.background_blur, 0, 100);
+        this.updateControl('sharpness', normalizedSettings.sharpness, -100, 100, true);
+        this.updateControl('contrast', normalizedSettings.contrast, -100, 100, true);
+        this.updateControl('saturation', normalizedSettings.saturation, -100, 100, true);
         
         // Update state
         this.state.updateUISettings(normalizedSettings);
@@ -178,14 +176,21 @@ class CameraUI {
     
     /**
      * Update một control cụ thể
+     * 
+     * @param elementId - ID của element
+     * @param value - Giá trị cần set
+     * @param min - Giá trị tối thiểu
+     * @param max - Giá trị tối đa
+     * @param isSigned - True nếu hiển thị dấu +/- (cho range âm)
+     * @param isZoom - True nếu là zoom control (hiển thị dạng "1.0x")
      */
-    updateControl(elementId, value, min, max, isSigned = false) {
+    updateControl(elementId, value, min, max, isSigned = false, isZoom = false) {
         const element = this.elements[elementId];
         const valueElement = this.elements[elementId + 'Value'];
         
         if (!element || value === undefined) return;
         
-        const numValue = parseFloat(value) || (min + max) / 2;
+        const numValue = parseFloat(value) ?? 0;
         const clampedValue = Math.max(min, Math.min(max, numValue));
         
         // Đánh dấu đang update programmatically
@@ -202,10 +207,15 @@ class CameraUI {
         
         // Update display text
         if (valueElement) {
-            if (isSigned) {
-                valueElement.textContent = (clampedValue >= 0 ? '+' : '') + clampedValue.toFixed(0) + '%';
+            if (isZoom) {
+                // Zoom: hiển thị dạng "1.0x", "2.0x" (giống các app camera)
+                valueElement.textContent = clampedValue.toFixed(1) + 'x';
+            } else if (isSigned) {
+                // Hiển thị dấu + cho giá trị dương
+                const sign = clampedValue > 0 ? '+' : '';
+                valueElement.textContent = sign + Math.round(clampedValue) + '%';
             } else {
-                valueElement.textContent = clampedValue.toFixed(0) + '%';
+                valueElement.textContent = Math.round(clampedValue) + '%';
             }
         }
     }
@@ -385,15 +395,15 @@ class CameraControls {
     }
     
     /**
-     * Reset to default (daylight preset)
+     * Reset to default (auto preset - giữ nguyên tính chất gốc của camera)
      */
     async resetToDefault() {
-        if (!confirm('Bạn có chắc muốn đặt lại thông số mặc định (Ban ngày)?')) {
+        if (!confirm('Bạn có chắc muốn đặt lại thông số mặc định (Tự động)?')) {
             return;
         }
         
         try {
-            await this.applyPreset('daylight');
+            await this.applyPreset('auto');
             console.log('[CameraControls] Reset to default completed');
         } catch (error) {
             console.error('[CameraControls] Error resetting to default:', error);
@@ -534,11 +544,15 @@ window.loadResolutionProfiles = async function() {
         
         const select = document.getElementById('resolutionProfile');
         if (select && profilesData.profiles) {
-            select.innerHTML = '<option value="">-- Chọn độ phân giải --</option>';
-            Object.keys(profilesData.profiles).forEach(profileName => {
+            // KHÔNG thêm option rỗng - chỉ hiện các profile thực sự có thể chọn
+            select.innerHTML = '';
+            
+            Object.keys(profilesData.profiles).forEach(profileKey => {
+                const profile = profilesData.profiles[profileKey];
                 const option = document.createElement('option');
-                option.value = profileName;
-                option.textContent = profileName;
+                option.value = profileKey;
+                // Hiển thị tên đẹp hơn với thông tin chi tiết
+                option.textContent = `${profile.name} (${profile.resolution_main[0]}×${profile.resolution_main[1]}, ${profile.max_fps}fps)`;
                 select.appendChild(option);
             });
         }
@@ -552,13 +566,18 @@ window.loadResolutionProfiles = async function() {
             const megapixelsEl = document.getElementById('currentMegapixels');
             const maxFpsEl = document.getElementById('currentMaxFps');
             
-            if (currentEl) currentEl.textContent = infoData.resolution || '-';
-            if (megapixelsEl) megapixelsEl.textContent = infoData.megapixels || '-';
-            if (maxFpsEl) maxFpsEl.textContent = infoData.max_fps || '-';
+            // FIX: Dùng đúng key từ API
+            if (infoData.resolution_main) {
+                if (currentEl) currentEl.textContent = `${infoData.resolution_main[0]}×${infoData.resolution_main[1]}`;
+            }
+            if (infoData.profile_info) {
+                if (megapixelsEl) megapixelsEl.textContent = infoData.profile_info.megapixels || '-';
+                if (maxFpsEl) maxFpsEl.textContent = infoData.profile_info.max_fps || '-';
+            }
             
-            // Set selected option
-            if (select && infoData.profile) {
-                select.value = infoData.profile;
+            // FIX: Dùng profile_name thay vì profile
+            if (select && infoData.profile_name) {
+                select.value = infoData.profile_name;
             }
         }
     } catch (error) {

@@ -438,14 +438,28 @@
                 <div style="margin-bottom: 1rem;">
                     <label style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; display: block;">Chọn preset:</label>
                     <select id="unifiedPresetSelect" class="form-control" style="margin-bottom: 0.5rem; font-size: 0.9rem;" onchange="handlePresetChange()">
-                        <option value="">-- Chọn preset --</option>
-                        <optgroup label="Hệ thống" id="systemPresetsGroup">
+                        <optgroup label="🔧 Mặc định" id="defaultPresetsGroup">
+                            <option value="system:auto">🔄 Tự động (Mặc định)</option>
+                        </optgroup>
+                        <optgroup label="🌿 Chụp lá cây" id="leafPresetsGroup">
+                            <option value="system:leaf_sharp">🍃 Lá cây - Sắc nét</option>
+                            <option value="system:leaf_vivid">🌈 Lá cây - Màu rực</option>
+                            <option value="system:leaf_macro">🔍 Lá cây - Cận cảnh</option>
+                            <option value="system:leaf_shadow">🌑 Lá cây - Bóng râm</option>
+                        </optgroup>
+                        <optgroup label="☀️ Cơ bản" id="basicPresetsGroup">
                             <option value="system:daylight">☀️ Ban ngày</option>
+                            <option value="system:cloudy">☁️ Trời nhiều mây</option>
+                            <option value="system:indoor">🏠 Trong nhà</option>
                             <option value="system:night">🌙 Ban đêm</option>
+                        </optgroup>
+                        <optgroup label="📷 Chuyên dụng" id="specialPresetsGroup">
                             <option value="system:sport">⚡ Thể thao</option>
+                            <option value="system:portrait">👤 Chân dung</option>
+                            <option value="system:document">📄 Tài liệu</option>
                             <option value="system:security">🔒 An ninh</option>
                         </optgroup>
-                        <optgroup label="Của tôi" id="userPresetsGroup">
+                        <optgroup label="👤 Của tôi" id="userPresetsGroup">
                             <!-- User presets will be loaded here -->
                         </optgroup>
                     </select>
@@ -496,74 +510,66 @@
                 <h4 style="margin-bottom: 0.75rem; font-size: 1rem;">Điều chỉnh hình ảnh</h4>
                 
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <!-- Zoom -->
+                    <!-- Zoom: 1x đến 4x (giống các ứng dụng camera) -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🔍 Độ phóng đại: <span id="zoomValue">100%</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🔍 Độ phóng đại: <span id="zoomValue">1.0x</span> <span id="zoomQuality" style="font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 3px; background: var(--accent-success); color: white;">Tốt nhất</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="zoom" class="form-control" min="100" max="400" step="5" value="100" 
-                                   oninput="updateUISettingDisplay('zoom', this.value); debouncedApplyUISetting('zoom', 'zoom');">
-                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', -0.1)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
+                            <input type="range" id="zoom" class="form-control" min="1" max="4" step="0.1" value="1" 
+                                   oninput="updateUISettingDisplay('zoom', this.value); updateZoomQuality(this.value); debouncedApplyUISetting('zoom', 'zoom');">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', 0.1)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
-                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
-                            100% = không zoom, 200% = zoom 2x, 400% = zoom 4x
+                        <small id="zoomHint" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+                            Digital zoom: Chất lượng tốt nhất ở 1x-1.5x. Nên đặt lá gần camera thay vì zoom.
                         </small>
                     </div>
                     
-                    <!-- Brightness -->
+                    <!-- Brightness: -100% đến +100% với 0% = mặc định -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ sáng: <span id="brightnessValue">0%</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">☀️ Độ sáng: <span id="brightnessValue">0%</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                        <input type="range" id="brightness" class="form-control" min="-100" max="100" step="1" value="0" 
+                            <input type="range" id="brightness" class="form-control" min="-100" max="100" step="5" value="0" 
                                    oninput="updateUISettingDisplay('brightness', this.value); debouncedApplyUISetting('brightness', 'brightness');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">0% = mặc định, -100% = rất tối, +100% = rất sáng</small>
                     </div>
                     
-                    <!-- Sharpness -->
+                    <!-- Sharpness: -100% đến +100% với 0% = mặc định -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ nét: <span id="sharpnessValue">100%</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🔎 Độ nét: <span id="sharpnessValue">0%</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('sharpness', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="sharpness" class="form-control" min="0" max="200" step="5" value="100" 
+                            <input type="range" id="sharpness" class="form-control" min="-100" max="100" step="5" value="0" 
                                    oninput="updateUISettingDisplay('sharpness', this.value); debouncedApplyUISetting('sharpness', 'sharpness');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('sharpness', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">0% = mặc định. Hiệu ứng rõ nhất khi chụp ảnh.</small>
                     </div>
                     
-                    <!-- Contrast -->
+                    <!-- Contrast: -100% đến +100% với 0% = mặc định -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ tương phản: <span id="contrastValue">100%</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🎨 Độ tương phản: <span id="contrastValue">0%</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('contrast', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="contrast" class="form-control" min="0" max="200" step="5" value="100" 
+                            <input type="range" id="contrast" class="form-control" min="-100" max="100" step="5" value="0" 
                                    oninput="updateUISettingDisplay('contrast', this.value); debouncedApplyUISetting('contrast', 'contrast');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('contrast', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">0% = mặc định, -100% = phẳng, +100% = cao</small>
                     </div>
                     
-                    <!-- Saturation -->
+                    <!-- Saturation: -100% đến +100% với 0% = mặc định -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ bão hòa màu: <span id="saturationValue">100%</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🌈 Độ bão hòa màu: <span id="saturationValue">0%</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('saturation', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="saturation" class="form-control" min="0" max="200" step="5" value="100" 
+                            <input type="range" id="saturation" class="form-control" min="-100" max="100" step="5" value="0" 
                                    oninput="updateUISettingDisplay('saturation', this.value); debouncedApplyUISetting('saturation', 'saturation');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('saturation', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
-                    </div>
-                    
-                    <!-- Background Blur -->
-                    <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Làm mờ vật thể phụ: <span id="backgroundBlurValue">0%</span></label>
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('backgroundBlur', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="backgroundBlur" class="form-control" min="0" max="100" step="5" value="0" 
-                                   oninput="updateUISettingDisplay('backgroundBlur', this.value); debouncedApplyUISetting('background_blur', 'backgroundBlur');">
-                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('backgroundBlur', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
-                        </div>
-                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Giảm độ nét vùng nền để làm nổi bật chủ thể</small>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">0% = mặc định, -100% = đen trắng, +100% = màu đậm</small>
                     </div>
                 </div>
                 
@@ -802,7 +808,9 @@
             showAnalysisPanelLoading({
                 file: data.file,
                 image_url: capturedImageUrl || (data.image_url ? (data.image_url.startsWith('/') ? PI_BASE_URL + data.image_url : data.image_url) : ''),
-                image_size_bytes: data.image_size_bytes
+                image_size_bytes: data.image_size_bytes,
+                zoom_info: data.zoom_info || null,
+                quality_info: data.quality_info || null
             });
             
             // Step 5: Phân tích ảnh đã capture ở background
@@ -916,6 +924,12 @@
                 <div class="analysis-info-card">
                     <h3>📅 Thời gian</h3>
                     <p class="value">${new Date().toLocaleString('vi-VN')}</p>
+                </div>
+                
+                <div class="analysis-info-card" id="zoomInfoCard" style="display: ${previewData.zoom_info ? 'block' : 'none'};">
+                    <h3>🔍 Chất lượng ảnh</h3>
+                    <p class="value">${previewData.quality_info || 'Full resolution'}</p>
+                    ${previewData.zoom_info ? `<small style="color: var(--text-muted);">Zoom ${previewData.zoom_info.zoom}x • ${previewData.zoom_info.cropped_size ? previewData.zoom_info.cropped_size[0] + 'x' + previewData.zoom_info.cropped_size[1] : 'N/A'}</small>` : ''}
                 </div>
             </div>
             
@@ -1269,8 +1283,7 @@
         'brightness': 'brightness',
         'sharpness': 'sharpness',
         'contrast': 'contrast',
-        'saturation': 'saturation',
-        'backgroundBlur': 'background_blur'
+        'saturation': 'saturation'
     };
     
     /**
@@ -1283,17 +1296,58 @@
         const valueElement = document.getElementById(elementId + 'Value');
         if (!valueElement) return;
         
-        // Format display based on element type
-        if (elementId === 'brightness') {
-            valueElement.textContent = (val >= 0 ? '+' : '') + val.toFixed(0) + '%';
+        // Format display phù hợp với từng loại setting
+        if (elementId === 'zoom') {
+            // Zoom: hiển thị dạng "1.0x", "2.0x", "4.0x" (giống các app camera)
+            valueElement.textContent = val.toFixed(1) + 'x';
+            // Cập nhật chỉ báo chất lượng zoom
+            updateZoomQuality(val);
         } else {
-            valueElement.textContent = val.toFixed(0) + '%';
+            // Các setting khác: hiển thị dấu +/- cho giá trị dương/âm
+            const sign = val > 0 ? '+' : '';
+            valueElement.textContent = sign + Math.round(val) + '%';
         }
         
         // Update slider background (chỉ visual, không trigger event)
         const slider = document.getElementById(elementId);
         if (slider && window.cameraControls && window.cameraControls.ui) {
             window.cameraControls.ui.updateRangeBackground(slider);
+        }
+    }
+    
+    /**
+     * Cập nhật chỉ báo chất lượng zoom
+     * Digital zoom làm giảm chất lượng ảnh khi zoom cao
+     */
+    function updateZoomQuality(zoomValue) {
+        const qualityBadge = document.getElementById('zoomQuality');
+        const zoomHint = document.getElementById('zoomHint');
+        if (!qualityBadge) return;
+        
+        const zoom = parseFloat(zoomValue) || 1.0;
+        
+        if (zoom <= 1.5) {
+            // 1x - 1.5x: Chất lượng tốt nhất
+            qualityBadge.textContent = 'Tốt nhất';
+            qualityBadge.style.background = 'var(--accent-success, #28a745)';
+            if (zoomHint) zoomHint.textContent = 'Chất lượng tốt nhất cho chụp và phân tích lá cây.';
+        } else if (zoom <= 2.0) {
+            // 1.5x - 2x: Chất lượng tốt
+            qualityBadge.textContent = 'Tốt';
+            qualityBadge.style.background = 'var(--accent-info, #17a2b8)';
+            if (zoomHint) zoomHint.textContent = 'Chất lượng tốt, phù hợp cho preview và nhận dạng.';
+        } else if (zoom <= 3.0) {
+            // 2x - 3x: Chất lượng trung bình
+            qualityBadge.textContent = 'Trung bình';
+            qualityBadge.style.background = 'var(--accent-warning, #ffc107)';
+            qualityBadge.style.color = '#000';
+            if (zoomHint) zoomHint.textContent = '⚠️ Chất lượng giảm. Nên đặt lá gần camera hơn thay vì zoom.';
+        } else {
+            // 3x - 4x: Chất lượng thấp
+            qualityBadge.textContent = 'Thấp';
+            qualityBadge.style.background = 'var(--accent-danger, #dc3545)';
+            qualityBadge.style.color = '#fff';
+            if (zoomHint) zoomHint.textContent = '⚠️ Chất lượng thấp! Không khuyến nghị chụp ảnh ở mức zoom này.';
         }
     }
     
@@ -1357,25 +1411,6 @@
             return;
         }
         
-        // Handle conflict giữa sharpness và background_blur
-        // Cả hai đều điều khiển cùng camera parameter (Sharpness)
-        if (settingName === 'sharpness') {
-            const blurSlider = document.getElementById('backgroundBlur');
-            if (blurSlider && parseFloat(blurSlider.value) > 0) {
-                blurSlider.value = 0;
-                updateUISettingDisplay('backgroundBlur', 0);
-                console.log('[UI] Reset background_blur to 0 (conflict with sharpness)');
-            }
-        } else if (settingName === 'background_blur') {
-            const sharpnessSlider = document.getElementById('sharpness');
-            const currentSharpness = parseFloat(sharpnessSlider?.value) || 100;
-            if (sharpnessSlider && currentSharpness !== 100) {
-                sharpnessSlider.value = 100;
-                updateUISettingDisplay('sharpness', 100);
-                console.log('[UI] Reset sharpness to 100% (conflict with background_blur)');
-            }
-        }
-        
         // Clear existing timer
         if (debounceTimers[settingName]) {
             clearTimeout(debounceTimers[settingName]);
@@ -1414,23 +1449,8 @@
         element.value = newValue;
         updateUISettingDisplay(elementId, newValue);
         
-        // Handle conflict giữa sharpness và background_blur
-        const settingName = settingNameMap[elementId];
-        if (settingName === 'sharpness') {
-            const blurSlider = document.getElementById('backgroundBlur');
-            if (blurSlider && parseFloat(blurSlider.value) > 0) {
-                blurSlider.value = 0;
-                updateUISettingDisplay('backgroundBlur', 0);
-            }
-        } else if (settingName === 'background_blur') {
-            const sharpnessSlider = document.getElementById('sharpness');
-            if (sharpnessSlider && parseFloat(sharpnessSlider.value) !== 100) {
-                sharpnessSlider.value = 100;
-                updateUISettingDisplay('sharpness', 100);
-            }
-        }
-        
         // Apply to camera (background, không block UI)
+        const settingName = settingNameMap[elementId];
         if (settingName) {
             applyUISettingSafe(settingName, elementId);
         }
