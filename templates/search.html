@@ -608,7 +608,7 @@
                     <h5 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--primary);">Độ phân giải</h5>
                     <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Kích thước:</strong> <span id="statusResolution">-</span></p>
                     <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Megapixels:</strong> <span id="statusMegapixels">-</span> MP</p>
-                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Frame Rate:</strong> <span id="statusFps">-</span> fps</p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Frame Rate:</strong> <span id="statusFps">-</span> <span>fps</span></p>
                     <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Tỷ lệ khung hình:</strong> <span id="statusAspectRatio">-</span></p>
         </div>
                 
@@ -1429,7 +1429,13 @@
      * Adjust UI setting by step (dùng cho nút +/-)
      * OPTIMISTIC UPDATE: UI cập nhật ngay, gửi request background
      */
-    function adjustUISetting(elementId, step) {
+    /**
+     * Điều chỉnh UI setting bằng nút +/-
+     * @param elementId - ID của slider
+     * @param delta - Giá trị thay đổi (ví dụ: -5 cho brightness, -0.1 cho zoom)
+     *                Giá trị này là trực tiếp, KHÔNG nhân với step của slider
+     */
+    function adjustUISetting(elementId, delta) {
         const element = document.getElementById(elementId);
         if (!element) {
             console.error(`[UI] Element not found: ${elementId}`);
@@ -1439,15 +1445,27 @@
         const currentValue = parseFloat(element.value) || 0;
         const min = parseFloat(element.min) || 0;
         const max = parseFloat(element.max) || 100;
-        const stepValue = parseFloat(element.step) || 5;
         
-        // Calculate new value
-        let newValue = currentValue + (step * stepValue);
+        // Calculate new value - delta là giá trị thay đổi trực tiếp
+        let newValue = currentValue + delta;
         newValue = Math.max(min, Math.min(max, newValue));
+        
+        // Round để tránh floating point errors (ví dụ: 1.0000000001)
+        // Zoom: 1 decimal, others: integer
+        if (elementId === 'zoom') {
+            newValue = Math.round(newValue * 10) / 10;  // 1 decimal place
+        } else {
+            newValue = Math.round(newValue);  // Integer
+        }
         
         // Update slider và display NGAY LẬP TỨC (Optimistic Update)
         element.value = newValue;
         updateUISettingDisplay(elementId, newValue);
+        
+        // Update zoom quality badge nếu là zoom
+        if (elementId === 'zoom') {
+            updateZoomQuality(newValue);
+        }
         
         // Apply to camera (background, không block UI)
         const settingName = settingNameMap[elementId];

@@ -481,7 +481,29 @@ async function refreshCameraStatus() {
             // Update system info
             document.getElementById('settingsState').textContent = systemInfo.state || '-';
             document.getElementById('settingsMode').textContent = systemInfo.mode || '-';
-            document.getElementById('settingsPreset').textContent = systemInfo.preset || '-';
+            
+            // Format preset: Hiển thị tên preset thay vì key
+            let presetDisplay = '-';
+            if (systemInfo.preset && systemInfo.preset !== '-') {
+                // Map preset key sang tên hiển thị
+                const presetNames = {
+                    'auto': 'Tự động (Mặc định)',
+                    'daylight': 'Ban ngày',
+                    'cloudy': 'Có mây',
+                    'night': 'Ban đêm',
+                    'indoor': 'Trong nhà',
+                    'sport': 'Thể thao',
+                    'portrait': 'Chân dung',
+                    'document': 'Tài liệu',
+                    'security': 'An ninh',
+                    'leaf_sharp': 'Lá cây - Sắc nét',
+                    'leaf_vivid': 'Lá cây - Màu rực',
+                    'leaf_macro': 'Lá cây - Cận cảnh',
+                    'leaf_shadow': 'Lá cây - Bóng râm'
+                };
+                presetDisplay = presetNames[systemInfo.preset] || systemInfo.preset;
+            }
+            document.getElementById('settingsPreset').textContent = presetDisplay;
             
             // Update technical settings
             const s = technicalSettings;
@@ -536,19 +558,26 @@ async function refreshCameraStatus() {
             document.getElementById('statusAwbEnable').textContent = 
                 (s.AwbEnable !== undefined) ? (s.AwbEnable ? 'Bật' : 'Tắt') : '-';
             
-            // Frame rate
+            // Frame rate - HTML đã có "fps" rồi, chỉ cần số
             const framerate = s.framerate;
-            document.getElementById('statusFps').textContent = framerate ? `${framerate} fps` : '-';
+            document.getElementById('statusFps').textContent = framerate ? `${framerate}` : '-';
             
             // Update resolution info
             if (resolutionInfo.resolution_main) {
                 const width = resolutionInfo.resolution_main[0];
                 const height = resolutionInfo.resolution_main[1];
                 document.getElementById('statusResolution').textContent = `${width} × ${height}`;
-                document.getElementById('statusMegapixels').textContent = 
-                    resolutionInfo.megapixels ? resolutionInfo.megapixels.toFixed(2) : '-';
+                
+                // Tính megapixels từ resolution thực tế (chính xác hơn)
+                const megapixels = (width * height) / 1_000_000;
+                document.getElementById('statusMegapixels').textContent = megapixels.toFixed(2);
+                
                 document.getElementById('statusAspectRatio').textContent = 
                     resolutionInfo.aspect_ratio || '-';
+            } else {
+                // Fallback nếu không có resolution_main
+                document.getElementById('statusMegapixels').textContent = 
+                    resolutionInfo.megapixels ? resolutionInfo.megapixels.toFixed(2) : '-';
             }
         } else {
             console.warn('[refreshCameraStatus] StatusBoard not available');
