@@ -481,7 +481,31 @@ async function refreshCameraStatus() {
             // Update system info
             document.getElementById('settingsState').textContent = systemInfo.state || '-';
             document.getElementById('settingsMode').textContent = systemInfo.mode || '-';
-            document.getElementById('settingsPreset').textContent = systemInfo.preset || '-';
+            
+            // Format preset: Hiển thị tên preset thay vì key
+            let presetDisplay = '-';
+            const presetKey = systemInfo.preset;
+            if (presetKey && presetKey !== '-' && presetKey !== 'unknown') {
+                // Map preset key sang tên hiển thị
+                const presetNames = {
+                    'auto': 'Tự động (Mặc định)',
+                    'daylight': 'Ban ngày',
+                    'cloudy': 'Có mây',
+                    'night': 'Ban đêm',
+                    'indoor': 'Trong nhà',
+                    'outdoor': 'Ngoài trời',
+                    'sport': 'Thể thao',
+                    'portrait': 'Chân dung',
+                    'document': 'Tài liệu',
+                    'security': 'An ninh',
+                    'leaf_sharp': 'Lá cây - Sắc nét',
+                    'leaf_vivid': 'Lá cây - Màu rực',
+                    'leaf_macro': 'Lá cây - Cận cảnh',
+                    'leaf_shadow': 'Lá cây - Bóng râm'
+                };
+                presetDisplay = presetNames[presetKey] || presetKey;
+            }
+            document.getElementById('settingsPreset').textContent = presetDisplay;
             
             // Update technical settings
             const s = technicalSettings;
@@ -536,8 +560,13 @@ async function refreshCameraStatus() {
             document.getElementById('statusAwbEnable').textContent = 
                 (s.AwbEnable !== undefined) ? (s.AwbEnable ? 'Bật' : 'Tắt') : '-';
             
-            // Frame rate
-            const framerate = s.framerate;
+            // Frame rate - QUAN TRỌNG: Ưu tiên lấy từ technical settings (giá trị thực từ camera)
+            // Nếu không có, lấy từ resolution info (max_fps)
+            let framerate = s.framerate;
+            if (!framerate && resolutionInfo.max_fps) {
+                framerate = resolutionInfo.max_fps;
+            }
+            // Hiển thị với "fps" (HTML đã có text "fps" rồi, chỉ cần số)
             document.getElementById('statusFps').textContent = framerate ? `${framerate} fps` : '-';
             
             // Update resolution info
@@ -545,10 +574,17 @@ async function refreshCameraStatus() {
                 const width = resolutionInfo.resolution_main[0];
                 const height = resolutionInfo.resolution_main[1];
                 document.getElementById('statusResolution').textContent = `${width} × ${height}`;
-                document.getElementById('statusMegapixels').textContent = 
-                    resolutionInfo.megapixels ? resolutionInfo.megapixels.toFixed(2) : '-';
+                
+                // Tính megapixels từ resolution thực tế (chính xác hơn)
+                const megapixels = (width * height) / 1_000_000;
+                document.getElementById('statusMegapixels').textContent = megapixels.toFixed(2);
+                
                 document.getElementById('statusAspectRatio').textContent = 
                     resolutionInfo.aspect_ratio || '-';
+            } else {
+                // Fallback nếu không có resolution_main
+                document.getElementById('statusMegapixels').textContent = 
+                    resolutionInfo.megapixels ? resolutionInfo.megapixels.toFixed(2) : '-';
             }
         } else {
             console.warn('[refreshCameraStatus] StatusBoard not available');
@@ -558,4 +594,18 @@ async function refreshCameraStatus() {
         console.error('Error refreshing camera status:', error);
     }
 }
+
+// Export functions to global scope
+window.getCsrfToken = getCsrfToken;
+window.checkPiStatus = checkPiStatus;
+window.pauseStream = pauseStream;
+window.resumeStream = resumeStream;
+window.restartCamera = restartCamera;
+window.reloadModel = reloadModel;
+window.refreshCameraStatus = refreshCameraStatus;
+window.loadUnifiedPresets = loadUnifiedPresets;
+window.handlePresetChange = handlePresetChange;
+window.applySelectedPreset = applySelectedPreset;
+window.deleteSelectedPreset = deleteSelectedPreset;
+window.saveCurrentPreset = saveCurrentPreset;
 

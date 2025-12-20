@@ -591,7 +591,12 @@ def api_get_user_presets(request):
     presets = UserCameraPreset.objects.filter(user=request.user).values('id', 'name', 'settings', 'is_default', 'created_at')
     return JsonResponse({
         'presets': list(presets),
-        'system_presets': ['daylight', 'night', 'sport', 'security']
+        'system_presets': [
+            'auto', 
+            'leaf_sharp', 'leaf_vivid', 'leaf_macro', 'leaf_shadow',
+            'daylight', 'cloudy', 'indoor', 'night',
+            'sport', 'portrait', 'document', 'security'
+        ]
     })
 
 

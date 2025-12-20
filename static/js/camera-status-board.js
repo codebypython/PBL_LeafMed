@@ -25,13 +25,14 @@ class CameraStatusBoard {
         };
         
         // UI settings (converted từ technical)
+        // Range: -100% đến +100% với 0% = mặc định (giống Lightroom, Snapseed)
+        // Zoom: 1.0 đến 4.0 (1x đến 4x, giống các app camera)
         this.uiSettings = {
-            zoom: 100,
-            brightness: 0,
-            sharpness: 100,
-            contrast: 100,
-            saturation: 100,
-            background_blur: 0
+            zoom: 1.0,          // 1.0 = không zoom (1x - 4x)
+            brightness: 0,      // 0% = mặc định (EV = 0)
+            sharpness: 0,       // 0% = mặc định (Sharpness = 1.0)
+            contrast: 0,        // 0% = mặc định (Contrast = 1.0)
+            saturation: 0       // 0% = mặc định (Saturation = 1.0)
         };
         
         // System info
