@@ -31,7 +31,11 @@ class CaptureResult(models.Model):
     confidence = models.FloatField(null=True, blank=True)
     image_file = models.CharField(max_length=255, blank=True, default='')  # tên file trên Pi
     local_image = models.ImageField(upload_to='captures/%Y/%m/%d/', null=True, blank=True)  # Ảnh lưu tại server
-    source = models.CharField(max_length=16, default='pi', choices=[('pi', 'Pi Capture'), ('upload', 'User Upload')])
+    source = models.CharField(max_length=16, default='pi', choices=[
+        ('pi', 'Pi Capture'), 
+        ('upload', 'User Upload'),
+        ('yolo_crop', 'YOLO Cropped')
+    ])
     success = models.BooleanField(default=False)
     raw = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

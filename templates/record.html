@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+    .video-layout {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .stream-section {
+        background: var(--bg-secondary);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stream-wrapper {
+        position: relative;
+        width: 100%;
+        background: #000;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stream-wrapper img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .stream-error {
+        color: var(--text-secondary);
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .recording-controls {
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        background: var(--bg-primary);
+        border-radius: var(--border-radius);
+        border: 2px solid var(--danger);
+    }
+
+    .recording-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .recording-indicator {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+    }
+
+    .recording-indicator.active {
+        background: var(--danger);
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+
+    .recording-time {
+        font-family: monospace;
+        font-size: 2rem;
+        color: var(--danger);
+        font-weight: bold;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+
+    .recording-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-record {
+        flex: 1;
+        min-width: 200px;
+        padding: 1rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .recording-message {
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        display: none;
+    }
+
+    .recording-message.success {
+        background: var(--success-light);
+        color: var(--success);
+        border: 1px solid var(--success);
+    }
+
+    .recording-message.error {
+        background: var(--danger-light);
+        color: var(--danger);
+        border: 1px solid var(--danger);
+    }
+
+    .info-box {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: var(--border-radius);
+        border-left: 4px solid var(--primary);
+    }
+
+    .info-box h4 {
+        margin-bottom: 0.5rem;
+        color: var(--primary);
+    }
+
+    .info-box ul {
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+
+    .info-box li {
+        margin-bottom: 0.25rem;
+    }
+</style>
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">🎥 Quay Video</h1>
+        <p class="card-subtitle">Xem stream trực tiếp và quay video từ Raspberry Pi Camera</p>
+    </div>
+
+    <!-- Status indicator -->
+    <div id="piStatus" class="status-indicator" style="margin-bottom: 1rem; padding: 0.75rem; border-radius: var(--border-radius-sm); background: var(--bg-secondary);">
+        <strong>Trạng thái Camera:</strong> <span id="statusText">Đang kiểm tra...</span>
+    </div>
+
+    <div class="video-layout">
+        <!-- Stream Display -->
+        <div class="stream-section">
+            <h3>📹 Camera Stream</h3>
+            <div class="stream-wrapper">
+                {% if stream_url %}
+                    <img 
+                        id="cameraStream" 
+                        src="{{ stream_url }}" 
+                        alt="Camera stream"
+                        onerror="handleStreamError(this)"
+                    >
+                {% else %}
+                    <div class="stream-error">
+                        <p style="font-size: 2rem; margin-bottom: 1rem;">⚠️</p>
+                        <p>Không thể kết nối camera</p>
+                        <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 1rem;">
+                            🔄 Thử lại
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recording Controls -->
+        <div class="recording-controls">
+            <h3 style="margin-bottom: 1rem;">🎬 Điều khiển quay video</h3>
+            
+            <div class="recording-status">
+                <span class="recording-indicator" id="recordingIndicator"></span>
+                <span id="recordingStatusText">Chưa quay</span>
+            </div>
+
+            <div id="recordingTime" class="recording-time" style="display: none;">00:00:00</div>
+
+            <div class="recording-actions">
+                <button 
+                    id="btnStartRecording" 
+                    class="btn btn-danger btn-record"
+                    onclick="startRecording()"
+                >
+                    ⏺ Bắt đầu quay
+                </button>
+
+                <button 
+                    id="btnStopRecording" 
+                    class="btn btn-secondary btn-record"
+                    onclick="stopRecording()"
+                    style="display: none;"
+                >
+                    ⏹ Dừng quay
+                </button>
+            </div>
+
+            <div id="recordingMessage" class="recording-message"></div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <h4>💡 Hướng dẫn sử dụng</h4>
+            <ul>
+                <li>Nhấn <strong>"Bắt đầu quay"</strong> để bắt đầu ghi hình</li>
+                <li>Video sẽ được lưu trực tiếp trên Raspberry Pi</li>
+                <li>Nhấn <strong>"Dừng quay"</strong> để kết thúc và lưu video</li>
+                <li>Đảm bảo có đủ dung lượng trên Raspberry Pi</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{% url 'search' %}" class="btn btn-outline btn-lg">
+                📸 Về trang chụp ảnh
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Video Recording Variables
+    let isRecording = false;
+    let recordingStartTime = null;
+    let recordingTimer = null;
+
+    // Start Video Recording
+    async function startRecording() {
+        const btnStart = document.getElementById('btnStartRecording');
+        const btnStop = document.getElementById('btnStopRecording');
+        const indicator = document.getElementById('recordingIndicator');
+        const statusText = document.getElementById('recordingStatusText');
+        const timeDisplay = document.getElementById('recordingTime');
+
+        try {
+            btnStart.disabled = true;
+            statusText.textContent = 'Đang khởi động...';
+            showRecordingMessage('⏳ Đang khởi động camera...', 'info');
+
+            const response = await fetch('/api/video/start/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({})
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                isRecording = true;
+                recordingStartTime = Date.now();
+
+                // Update UI
+                btnStart.style.display = 'none';
+                btnStop.style.display = 'block';
+                indicator.classList.add('active');
+                statusText.textContent = '🔴 Đang quay';
+                timeDisplay.style.display = 'block';
+
+                // Start timer
+                recordingTimer = setInterval(updateRecordingTime, 1000);
+
+                showRecordingMessage('✅ Đã bắt đầu quay video!', 'success');
+            } else {
+                throw new Error(result.error || 'Không thể bắt đầu quay');
+            }
+        } catch (error) {
+            console.error('Error starting recording:', error);
+            showRecordingMessage('❌ Lỗi: ' + error.message, 'error');
+            btnStart.disabled = false;
+            statusText.textContent = 'Chưa quay';
+        }
+    }
+
+    // Stop Video Recording
+    async function stopRecording() {
+        const btnStart = document.getElementById('btnStartRecording');
+        const btnStop = document.getElementById('btnStopRecording');
+        const indicator = document.getElementById('recordingIndicator');
+        const statusText = document.getElementById('recordingStatusText');
+        const timeDisplay = document.getElementById('recordingTime');
+
+        try {
+            btnStop.disabled = true;
+            statusText.textContent = 'Đang dừng...';
+            showRecordingMessage('⏳ Đang lưu video...', 'info');
+
+            const response = await fetch('/api/video/stop/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                isRecording = false;
+                clearInterval(recordingTimer);
+
+                // Update UI
+                btnStart.style.display = 'block';
+                btnStop.style.display = 'none';
+                btnStop.disabled = false;
+                indicator.classList.remove('active');
+                statusText.textContent = '✅ Đã lưu';
+                timeDisplay.style.display = 'none';
+                timeDisplay.textContent = '00:00:00';
+
+                const message = result.message || 'Đã lưu video trên Raspberry Pi';
+                const videoFile = result.filename ? `\nFile: ${result.filename}` : '';
+                showRecordingMessage('✅ ' + message + videoFile, 'success');
+
+                // Re-enable start button after delay
+                setTimeout(() => {
+                    btnStart.disabled = false;
+                    statusText.textContent = 'Chưa quay';
+                }, 3000);
+            } else {
+                throw new Error(result.error || 'Không thể dừng quay');
+            }
+        } catch (error) {
+            console.error('Error stopping recording:', error);
+            showRecordingMessage('❌ Lỗi: ' + error.message, 'error');
+            btnStop.disabled = false;
+            statusText.textContent = '🔴 Đang quay';
+        }
+    }
+
+    // Update Recording Time Display
+    function updateRecordingTime() {
+        if (!isRecording || !recordingStartTime) return;
+
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const hours = Math.floor(elapsed / 3600);
+        const minutes = Math.floor((elapsed % 3600) / 60);
+        const seconds = elapsed % 60;
+
+        const timeString = [hours, minutes, seconds]
+            .map(n => n.toString().padStart(2, '0'))
+            .join(':');
+
+        document.getElementById('recordingTime').textContent = timeString;
+    }
+
+    // Show Recording Message
+    function showRecordingMessage(text, type) {
+        const message = document.getElementById('recordingMessage');
+        message.textContent = text;
+        message.className = 'recording-message ' + type;
+        message.style.display = 'block';
+
+        if (type !== 'info') {
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 5000);
+        }
+    }
+
+    // Check Recording Status on Load
+    async function checkRecordingStatus() {
+        try {
+            const response = await fetch('/api/video/status/');
+            const result = await response.json();
+
+            if (result.is_recording) {
+                // Resume UI if recording is already in progress
+                isRecording = true;
+                document.getElementById('btnStartRecording').style.display = 'none';
+                document.getElementById('btnStopRecording').style.display = 'block';
+                document.getElementById('recordingIndicator').classList.add('active');
+                document.getElementById('recordingStatusText').textContent = '🔴 Đang quay';
+                document.getElementById('recordingTime').style.display = 'block';
+
+                // Estimate start time if available
+                if (result.start_time) {
+                    recordingStartTime = new Date(result.start_time).getTime();
+                } else {
+                    recordingStartTime = Date.now();
+                }
+                recordingTimer = setInterval(updateRecordingTime, 1000);
+                
+                showRecordingMessage('ℹ️ Phiên quay đang tiếp tục từ trước...', 'info');
+            }
+        } catch (error) {
+            console.error('Error checking recording status:', error);
+        }
+    }
+
+    // Handle Stream Error
+    function handleStreamError(img) {
+        console.error('Stream error');
+        img.style.display = 'none';
+        const wrapper = img.closest('.stream-wrapper');
+        if (wrapper) {
+            wrapper.innerHTML = `
+                <div class="stream-error">
+                    <p style="font-size: 2rem; margin-bottom: 1rem;">⚠️</p>
+                    <p>Không thể kết nối stream</p>
+                    <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 1rem;">
+                        🔄 Thử lại
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    // Get CSRF Token
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+               document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    }
+
+    // Check Pi Status
+    async function checkStatus() {
+        try {
+            const response = await fetch('/api/status/');
+            const status = await response.json();
+            
+            const statusText = document.getElementById('statusText');
+            if (status.camera_active) {
+                statusText.textContent = '✅ Đang hoạt động';
+                statusText.style.color = 'var(--success)';
+            } else {
+                statusText.textContent = '⚠️ Không hoạt động';
+                statusText.style.color = 'var(--warning)';
+            }
+        } catch (error) {
+            console.error('Status check error:', error);
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = '❌ Lỗi kết nối';
+            statusText.style.color = 'var(--danger)';
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🎥 Record page initialized');
+        checkStatus();
+        checkRecordingStatus();
+        
+        // Periodic status check
+        setInterval(checkStatus, 30000); // Every 30 seconds
+    });
+</script>
+
+{% endblock %}

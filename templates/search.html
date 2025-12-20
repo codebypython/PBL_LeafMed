@@ -2,346 +2,7 @@
 {% load static %}
 
 {% block content %}
-<style>
-    .main-layout {
-        display: flex;
-        gap: 1rem;
-        align-items: flex-start;
-    }
-    
-    .main-content {
-        flex: 1;
-        min-width: 0;
-    }
-    
-    .controls-sidebar {
-        width: 350px;
-        min-width: 300px;
-        background: var(--bg-secondary);
-        border-radius: var(--border-radius);
-        padding: 1rem;
-        position: sticky;
-        top: 1rem;
-        max-height: calc(100vh - 2rem);
-        overflow-y: auto;
-    }
-    
-    .sidebar-toggle {
-        display: none;
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        z-index: 1000;
-        background: var(--primary);
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: var(--border-radius-sm);
-        cursor: pointer;
-    }
-    
-    @media (max-width: 1200px) {
-        .controls-sidebar {
-            position: fixed;
-            right: -400px;
-            top: 0;
-            height: 100vh;
-            width: 400px;
-            z-index: 999;
-            transition: right 0.3s ease;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-        }
-        
-        .controls-sidebar.open {
-            right: 0;
-        }
-        
-        .sidebar-toggle {
-            display: block;
-        }
-    }
-    
-    /* Analysis Result Panel Styles */
-    .analysis-panel-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.75);
-        z-index: 2000;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-        animation: fadeIn 0.3s ease;
-        overflow-y: auto;
-    }
-    
-    .analysis-panel-overlay.show {
-        display: flex;
-    }
-    
-    .analysis-panel {
-        background: var(--bg-primary);
-        border-radius: var(--border-radius);
-        max-width: 900px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        animation: slideUp 0.3s ease;
-        position: relative;
-        margin: auto;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .analysis-panel-header {
-        padding: 1.5rem;
-        border-bottom: 2px solid var(--border-color);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-        color: white;
-        border-radius: var(--border-radius) var(--border-radius) 0 0;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-    
-    .analysis-panel-header h2 {
-        margin: 0;
-        font-size: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .analysis-panel-close {
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
-        color: white;
-        font-size: 1.5rem;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.2s;
-    }
-    
-    .analysis-panel-close:hover {
-        background: rgba(255, 255, 255, 0.3);
-    }
-    
-    .analysis-panel-body {
-        padding: 2rem;
-    }
-    
-    .analysis-image-section {
-        text-align: center;
-        margin-bottom: 2rem;
-        padding: 1rem;
-        background: var(--bg-secondary);
-        border-radius: var(--border-radius-sm);
-    }
-    
-    .analysis-image-section img {
-        max-width: 100%;
-        max-height: 400px;
-        border-radius: var(--border-radius-sm);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        object-fit: contain;
-    }
-    
-    .analysis-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-    
-    .analysis-info-card {
-        padding: 1.25rem;
-        background: var(--bg-secondary);
-        border-radius: var(--border-radius-sm);
-        border-left: 4px solid var(--primary);
-    }
-    
-    .analysis-info-card h3 {
-        margin: 0 0 0.75rem 0;
-        font-size: 0.9rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
-    }
-    
-    .analysis-info-card .value {
-        font-size: 1.1rem;
-        font-weight: 500;
-        color: var(--text-primary);
-        margin: 0;
-        line-height: 1.6;
-    }
-    
-    .analysis-info-card .value.empty {
-        color: var(--text-muted);
-        font-style: italic;
-    }
-    
-    .confidence-display {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-top: 0.5rem;
-    }
-    
-    .confidence-value {
-        font-size: 1.5rem;
-        font-weight: 600;
-        min-width: 60px;
-    }
-    
-    .confidence-bar-container {
-        flex: 1;
-    }
-    
-    .confidence-bar {
-        height: 10px;
-        background: var(--bg-primary);
-        border-radius: 5px;
-        overflow: hidden;
-        position: relative;
-    }
-    
-    .confidence-bar-fill {
-        height: 100%;
-        transition: width 1s ease;
-        border-radius: 5px;
-    }
-    
-    .confidence-bar-fill.high {
-        background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
-    }
-    
-    .confidence-bar-fill.medium {
-        background: linear-gradient(90deg, #FF9800 0%, #FFC107 100%);
-    }
-    
-    .confidence-bar-fill.low {
-        background: linear-gradient(90deg, #F44336 0%, #E91E63 100%);
-    }
-    
-    .analysis-detail-section {
-        margin-top: 2rem;
-        padding-top: 2rem;
-        border-top: 2px solid var(--border-color);
-    }
-    
-    .analysis-detail-section h3 {
-        margin: 0 0 1rem 0;
-        font-size: 1.2rem;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .analysis-detail-content {
-        padding: 1rem;
-        background: var(--bg-secondary);
-        border-radius: var(--border-radius-sm);
-        line-height: 1.8;
-        color: var(--text-primary);
-        white-space: pre-wrap;
-    }
-    
-    .analysis-detail-content.empty {
-        color: var(--text-muted);
-        font-style: italic;
-    }
-    
-    .analysis-panel-footer {
-        padding: 1.5rem;
-        border-top: 2px solid var(--border-color);
-        display: flex;
-        gap: 1rem;
-        justify-content: flex-end;
-        background: var(--bg-secondary);
-        border-radius: 0 0 var(--border-radius) var(--border-radius);
-        position: sticky;
-        bottom: 0;
-    }
-    
-    .analysis-success-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: rgba(76, 175, 80, 0.1);
-        color: #4CAF50;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        margin-bottom: 1rem;
-    }
-    
-    .analysis-warning-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: rgba(255, 152, 0, 0.1);
-        color: #FF9800;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        margin-bottom: 1rem;
-    }
-    
-    .loading-skeleton {
-        background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-primary) 50%, var(--bg-secondary) 75%);
-        background-size: 200% 100%;
-        animation: loading 1.5s ease-in-out infinite;
-        border-radius: 4px;
-        height: 1.2em;
-        width: 60%;
-        display: inline-block;
-    }
-    
-    @keyframes loading {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-    
-    .analysis-panel-footer .btn-save {
-        min-width: 120px;
-    }
-    
-    .analysis-panel-footer .btn-save:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/search.css' %}">
 
 <div class="card">
     <div class="card-header">
@@ -367,10 +28,11 @@
             
             <!-- Tab Camera -->
             <div id="camera-tab" class="tab-content">
-                <div class="stream-container">
+                <div class="stream-container" style="position: relative;">
                     <div class="stream-wrapper">
                         <img src="{{ stream_url }}" alt="Pi Stream" class="stream-image" id="streamImage">
-                        <div class="stream-overlay" id="streamOverlay" style="display: none;">
+                        <canvas id="yoloOverlayCanvas" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
+                        <div class="stream-overlay" id="streamOverlay">
                             <div class="spinner"></div>
                             <p style="margin-top: 1rem; color: white;">Đang xử lý...</p>
                         </div>
@@ -384,16 +46,6 @@
                             📸 Chụp ảnh và phân tích
                         </button>
                     </form>
-                    <button class="btn btn-danger btn-lg" id="startVideoBtn" onclick="startVideoRecording()">
-                        🔴 Bắt đầu quay video
-                    </button>
-                    <button class="btn btn-danger btn-lg" id="stopVideoBtn" onclick="stopVideoRecording()" style="display: none;">
-                        ⏹️ Dừng quay video
-                    </button>
-                    <div id="videoStatus" style="display: none; padding: 0.5rem; background: rgba(220, 53, 69, 0.1); border-radius: var(--border-radius-sm); margin-top: 0.5rem; text-align: center;">
-                        <span id="videoStatusText">🔴 Đang quay...</span>
-                        <span id="videoDuration" style="margin-left: 1rem; font-weight: bold; color: var(--danger);">00:00</span>
-                    </div>
                     <button class="btn btn-secondary" onclick="pauseStream()" id="pauseBtn">⏸️ Tạm dừng</button>
                     <button class="btn btn-secondary" onclick="resumeStream()" id="resumeBtn" style="display: none;">▶️ Tiếp tục</button>
                 </div>        
@@ -472,6 +124,27 @@
                 <p id="presetStatus" style="color: var(--text-muted); font-size: 0.85rem; margin: 0;"></p>
             </div>
             
+            <!-- YOLO Leaf Detection Controls -->
+            <div class="yolo-controls-section">
+                <h4>🤖 Nhận diện lá tự động (AI)</h4>
+                
+                <div class="yolo-confidence-control">
+                    <label>Độ tin cậy tối thiểu: <span id="confidenceValue">35%</span></label>
+                    <input type="range" id="yoloConfidence" min="10" max="90" value="35" 
+                           oninput="updateConfidenceDisplay(this.value)" class="form-control">
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-primary" id="yoloToggleBtn" onclick="toggleYOLODetection()" style="flex: 1; font-size: 0.85rem;">
+                        🔍 Bắt đầu quét lá
+                    </button>
+                </div>
+                
+                <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.5rem;">
+                    💡 Nhấn vào khung xanh trên video để cắt và phân tích lá
+                </small>
+            </div>
+            
             <!-- Save Current Settings -->
             <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-primary); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
                 <h4 style="margin-bottom: 0.75rem; font-size: 1rem;">Lưu thông số hiện tại</h4>
@@ -512,15 +185,15 @@
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <!-- Zoom: 1x đến 4x (giống các ứng dụng camera) -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🔍 Độ phóng đại: <span id="zoomValue">1.0x</span> <span id="zoomQuality" style="font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 3px; background: var(--accent-success); color: white;">Tốt nhất</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🔍 Độ phóng đại: <span id="zoomValue">1.0x</span> <span id="zoomQuality" class="badge" style="margin-left: 0.5rem; font-size: 0.75rem;"></span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', -0.1)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
                             <input type="range" id="zoom" class="form-control" min="1" max="4" step="0.1" value="1" 
-                                   oninput="updateUISettingDisplay('zoom', this.value); updateZoomQuality(this.value); debouncedApplyUISetting('zoom', 'zoom');">
+                                   oninput="updateUISettingDisplay('zoom', this.value); debouncedApplyUISetting('zoom', 'zoom');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', 0.1)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
                         <small id="zoomHint" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
-                            Digital zoom: Chất lượng tốt nhất ở 1x-1.5x. Nên đặt lá gần camera thay vì zoom.
+                            1.0x = không zoom, 2.0x = zoom 2x, 4.0x = zoom 4x
                         </small>
                     </div>
                     
@@ -529,7 +202,7 @@
                         <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">☀️ Độ sáng: <span id="brightnessValue">0%</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="brightness" class="form-control" min="-100" max="100" step="5" value="0" 
+                        <input type="range" id="brightness" class="form-control" min="-100" max="100" step="5" value="0" 
                                    oninput="updateUISettingDisplay('brightness', this.value); debouncedApplyUISetting('brightness', 'brightness');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
@@ -637,6 +310,8 @@
   <script src="{% static 'js/camera-status-board.js' %}"></script>
   <script src="{% static 'js/search.js' %}"></script>
   <script src="{% static 'js/camera-controls.js' %}"></script>
+  <script src="{% static 'js/search-page.js' %}"></script>
+  <script src="{% static 'js/yolo-detection.js' %}"></script>
   <script>
     // Khởi tạo
     const PI_BASE_URL = '{{ pi_base }}';
@@ -1476,225 +1151,18 @@
     
     // Đóng panel khi click vào overlay
     document.addEventListener('DOMContentLoaded', function() {
-        const panel = document.getElementById('analysisPanel');
-        if (panel) {
-            panel.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeAnalysisPanel();
-                }
-            });
-        }
-        
-        // Đóng panel khi nhấn ESC
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && panel && panel.classList.contains('show')) {
-                closeAnalysisPanel();
-            }
-        });
+        // Initialize YOLO detector
+        window.yoloDetector = new YOLOLeafDetector('streamImage', 'yoloOverlayCanvas');
     });
     
-    // Handle stream image errors
-    document.getElementById('streamImage').addEventListener('error', function() {
-        this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle" fill="%23999"%3EStream không khả dụng%3C/text%3E%3C/svg%3E';
-    });
-    
-    // NOTE: Camera controls initialization is handled by camera-controls.js
-    // Range sliders, resolution profiles, and settings are auto-initialized
-
-        // ============================================================
-    // VIDEO RECORDING (Tạm thời - để tăng dataset)
-    // ============================================================
-    
-    // Video Recording State
-    let videoRecordingState = {
-        isRecording: false,
-        startTime: null,
-        durationInterval: null,
-        statusPollInterval: null
-    };
-    
-    // Bắt đầu quay video
-    async function startVideoRecording() {
-        if (videoRecordingState.isRecording) {
-            alert('Đang quay video!');
-            return;
-        }
-        
-        const startBtn = document.getElementById('startVideoBtn');
-        const stopBtn = document.getElementById('stopVideoBtn');
-        const statusDiv = document.getElementById('videoStatus');
-        const statusText = document.getElementById('videoStatusText');
-        const durationSpan = document.getElementById('videoDuration');
-        
-        try {
-            startBtn.disabled = true;
-            startBtn.textContent = '⏳ Đang khởi động...';
-            
-            const response = await fetch('/api/video/start/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCsrfToken(),
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({})
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                videoRecordingState.isRecording = true;
-                videoRecordingState.startTime = Date.now();
-                
-                // Update UI
-                startBtn.style.display = 'none';
-                stopBtn.style.display = 'inline-block';
-                statusDiv.style.display = 'block';
-                statusText.textContent = '🔴 Đang quay...';
-                durationSpan.textContent = '00:00';
-                
-                // Start duration timer
-                videoRecordingState.durationInterval = setInterval(() => {
-                    const elapsed = Math.floor((Date.now() - videoRecordingState.startTime) / 1000);
-                    const minutes = Math.floor(elapsed / 60);
-                    const seconds = elapsed % 60;
-                    durationSpan.textContent = 
-                        String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-                }, 1000);
-                
-                // Poll recording status periodically (mỗi 5 giây)
-                pollVideoStatus();
-            } else {
-                throw new Error(data.error || 'Lỗi khởi động quay video');
-            }
-        } catch (error) {
-            console.error('Start video error:', error);
-            alert('Lỗi: ' + error.message);
-            startBtn.disabled = false;
-            startBtn.textContent = '🔴 Bắt đầu quay video';
+    // Update confidence display
+    function updateConfidenceDisplay(value) {
+        document.getElementById('confidenceValue').textContent = value + '%';
+        if (window.yoloDetector) {
+            window.yoloDetector.setConfidence(value / 100);
         }
     }
-    
-    // Dừng quay video
-    async function stopVideoRecording() {
-        if (!videoRecordingState.isRecording) {
-            return;
-        }
-        
-        const startBtn = document.getElementById('startVideoBtn');
-        const stopBtn = document.getElementById('stopVideoBtn');
-        const statusDiv = document.getElementById('videoStatus');
-        
-        try {
-            stopBtn.disabled = true;
-            stopBtn.textContent = '⏳ Đang dừng...';
-            
-            const response = await fetch('/api/video/stop/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCsrfToken(),
-                    'Content-Type': 'application/json',
-                },
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                // Clear intervals
-                if (videoRecordingState.durationInterval) {
-                    clearInterval(videoRecordingState.durationInterval);
-                    videoRecordingState.durationInterval = null;
-                }
-                if (videoRecordingState.statusPollInterval) {
-                    clearTimeout(videoRecordingState.statusPollInterval);
-                    videoRecordingState.statusPollInterval = null;
-                }
-                
-                // Reset state
-                videoRecordingState.isRecording = false;
-                videoRecordingState.startTime = null;
-                
-                // Update UI
-                startBtn.style.display = 'inline-block';
-                startBtn.disabled = false;
-                startBtn.textContent = '🔴 Bắt đầu quay video';
-                stopBtn.style.display = 'none';
-                statusDiv.style.display = 'none';
-                
-                // Show success message
-                const filename = data.filename || 'video';
-                alert(`✅ Đã lưu video: ${filename}\nVideo đã được lưu trên Pi.`);
-            } else {
-                throw new Error(data.error || 'Lỗi dừng quay video');
-            }
-        } catch (error) {
-            console.error('Stop video error:', error);
-            alert('Lỗi: ' + error.message);
-            stopBtn.disabled = false;
-            stopBtn.textContent = '⏹️ Dừng quay video';
-        }
-    }
-    
-    // Poll video status (kiểm tra xem có đang quay không)
-    async function pollVideoStatus() {
-        if (!videoRecordingState.isRecording) {
-            return;
-        }
-        
-        try {
-            const response = await fetch('/api/video/status/');
-            const data = await response.json();
-            
-            // Nếu không còn recording (có thể bị lỗi hoặc timeout)
-            if (!data.recording && videoRecordingState.isRecording) {
-                console.warn('Recording stopped unexpectedly');
-                // Reset UI
-                videoRecordingState.isRecording = false;
-                if (videoRecordingState.durationInterval) {
-                    clearInterval(videoRecordingState.durationInterval);
-                    videoRecordingState.durationInterval = null;
-                }
-                
-                document.getElementById('startVideoBtn').style.display = 'inline-block';
-                document.getElementById('stopVideoBtn').style.display = 'none';
-                document.getElementById('videoStatus').style.display = 'none';
-                
-                alert('⚠️ Quay video đã dừng bất ngờ. Vui lòng thử lại.');
-            }
-        } catch (error) {
-            console.error('Poll status error:', error);
-        }
-        
-        // Poll lại sau 5 giây nếu vẫn đang recording
-        if (videoRecordingState.isRecording) {
-            videoRecordingState.statusPollInterval = setTimeout(pollVideoStatus, 5000);
-        }
-    }
-    
-    // Kiểm tra trạng thái khi trang load (để khôi phục UI nếu đang quay)
-    async function checkVideoStatusOnLoad() {
-        try {
-            const response = await fetch('/api/video/status/');
-            const data = await response.json();
-            
-            if (data.recording) {
-                // Nếu đang quay, khôi phục UI (nhưng không biết startTime nên không hiển thị duration chính xác)
-                videoRecordingState.isRecording = true;
-                document.getElementById('startVideoBtn').style.display = 'none';
-                document.getElementById('stopVideoBtn').style.display = 'inline-block';
-                document.getElementById('videoStatus').style.display = 'block';
-                document.getElementById('videoDuration').textContent = '--:--';
-                
-                // Start polling
-                pollVideoStatus();
-            }
-        } catch (error) {
-            console.error('Check video status error:', error);
-        }
-    }
-    
-    // Gọi khi trang load
-    checkVideoStatusOnLoad();
-</script>
+  </script>
 
 <!-- Analysis Result Panel -->
 <div class="analysis-panel-overlay" id="analysisPanel">
