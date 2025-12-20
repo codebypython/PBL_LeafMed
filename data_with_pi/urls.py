@@ -10,6 +10,8 @@ urlpatterns = [
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('history/', views.history, name='history'),
     path('search/', views.search, name='search'),
+    path('test/', views.test, name='test'),  # Test page (hidden from navigation)
+    path('record/', views.record, name='record'),
     path('upload/', views.upload_analyze, name='upload_analyze'), 
     path('plant/<int:plant_id>/', views.plant_detail, name='plant_detail'),
     path('recipe/<int:recipe_id>/', views.recipe_detail, name='recipe_detail'),
@@ -18,6 +20,7 @@ urlpatterns = [
     path('api/capture/preview/', views.api_capture_preview, name='api_capture_preview'),
     path('api/capture/analyze/', views.api_analyze_image, name='api_analyze_image'),
     path('api/capture/save/', views.api_save_capture_result, name='api_save_capture_result'),
+    path('api/upload/analyze/', views.api_upload_analyze, name='api_upload_analyze'),
     path('api/status/', views.api_status, name='api_status'),
     path('api/stream/pause/', views.api_pause_stream, name='api_pause_stream'),
     path('api/stream/resume/', views.api_resume_stream, name='api_resume_stream'),
@@ -45,4 +48,9 @@ urlpatterns = [
     path('api/video/start/', views.api_start_video_recording, name='api_start_video_recording'),
     path('api/video/stop/', views.api_stop_video_recording, name='api_stop_video_recording'),
     path('api/video/status/', views.api_get_video_recording_status, name='api_get_video_recording_status'),
+    
+    # YOLO Leaf Detection endpoints
+    path('api/yolo/detect/', views.api_detect_leaves, name='api_detect_leaves'),
+    path('api/yolo/crop/', views.api_crop_leaf, name='api_crop_leaf'),
+    path('api/yolo/analyze/', views.api_analyze_cropped_leaf, name='api_analyze_cropped_leaf'),
 ]

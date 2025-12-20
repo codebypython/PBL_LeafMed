@@ -2,6 +2,7 @@
 import os
 import logging
 
+from django.db.models import Q
 from django.utils import timezone as dj_timezone
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -11,6 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from .models import CaptureResult, Plant, UserCameraPreset
 from .forms import UserProfileForm
@@ -23,7 +25,7 @@ logger = logging.getLogger(__name__)
 def home(request):
     """Trang chủ - hiển thị khác nhau cho user đã đăng nhập/chưa đăng nhập"""
     # Lấy 34 cây thuốc từ database
-    plants = Plant.objects.all().order_by('name')[:34]
+    plants = Plant.objects.exclude(name__in=['Background', 'Green_but_not_leaf']).order_by('name')[:34]
     return render(request, 'home.html', {'plants': plants})
 
 
@@ -106,6 +108,18 @@ def search(request):
 
 
 @login_required
+def record(request):
+    """Trang quay video - yêu cầu đăng nhập"""
+    status = pi_client.get_status()
+    stream_url = pi_client.get_stream_url()
+    return render(request, 'record.html', {
+        'stream_url': stream_url,
+        'pi_status': status,
+        'pi_base': pi_client.base_url,
+    })
+
+
+@login_required
 @require_http_methods(["POST"])
 def api_save_capture_result(request):
     """API endpoint: Lưu kết quả phân tích vào database khi người dùng click 'Lưu'"""
@@ -124,18 +138,28 @@ def api_save_capture_result(request):
         
         # Kiểm tra các trường hợp không được lưu
         label_lower = label.lower()
-        if label_lower == 'background' or label_lower == 'green_but_not_leaf':
+        if label_lower == 'background' or label_lower == 'Green_but_not_leaf':
             return JsonResponse({
                 "success": False,
                 "error": f"'{label}' không được lưu vào database"
             }, status=400)
         
 
-        # Tìm hoặc tạo Plant theo tên khoa học
-        plant, created = Plant.objects.get_or_create(
-            scientific_name=label, 
-            defaults={'name': label, 'should_save': True}
-        )
+        # Tìm Plant theo tên khoa học hoặc tên thường
+        plant = Plant.objects.filter(
+            Q(scientific_name__iexact=label) | Q(name__iexact=label)
+        ).first()
+        
+        # Nếu không tìm thấy, tạo mới với scientific_name
+        if not plant:
+            plant = Plant.objects.create(
+                scientific_name=label,
+                name=label,
+                should_save=True
+            )
+            created = True
+        else:
+            created = False
     
         # Kiểm tra should_save
         if not plant.should_save:
@@ -170,10 +194,11 @@ def api_save_capture_result(request):
         # Refresh plant từ database để lấy đầy đủ thông tin
         plant.refresh_from_db()
             
-        # Trả về JSON với đầy đủ thông tin plant
+        # Trả về JSON với đầy đủ thông tin plant và plant_id để redirect
         return JsonResponse({
             'success': True,
             'message': f"Đã lưu: {label} ({confidence:.1%})",
+            'plant_id': plant.id,  # Thêm plant_id để redirect đến trang chi tiết
             'result': {
                 'name': plant.name,
                 'scientific_name': plant.scientific_name or '',
@@ -202,13 +227,21 @@ def api_save_capture_result(request):
 @require_http_methods(["POST"])
 def upload_analyze(request):
     """Upload ảnh và phân tích"""
+    logger.info(f"=== UPLOAD_ANALYZE DEBUG START ===")
+    logger.info(f"Request method: {request.method}")
+    logger.info(f"FILES keys: {list(request.FILES.keys())}")
+    
     f = request.FILES.get('image')
     if not f:
+        logger.error("No image file found in request")
         messages.error(request, 'Vui lòng chọn file ảnh.')
         return redirect('search')
     
+    logger.info(f"File info: name={f.name}, size={f.size}, content_type={f.content_type}")
+    
     allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
     if f.content_type not in allowed or f.size > 10 * 1024 * 1024:
+        logger.error(f"Invalid file: content_type={f.content_type}, size={f.size}")
         messages.error(request, 'Ảnh không hợp lệ hoặc vượt quá 10MB.')
         return redirect('search')
     
@@ -224,10 +257,19 @@ def upload_analyze(request):
         return redirect('search')
     
     label = (resp.get('name') or '').strip()
-    plant, _ = Plant.objects.get_or_create(
-        scientific_name=label, 
-        defaults={'name': label, 'should_save': True}
-    )
+    
+    # Tìm Plant theo tên khoa học hoặc tên thường
+    plant = Plant.objects.filter(
+        Q(scientific_name__iexact=label) | Q(name__iexact=label)
+    ).first()
+    
+    # Nếu không tìm thấy, tạo mới
+    if not plant:
+        plant = Plant.objects.create(
+            scientific_name=label,
+            name=label,
+            should_save=True
+        )
     
     if plant.should_save:
         ext = os.path.splitext(f.name)[1].lower() or '.jpg'
@@ -251,6 +293,49 @@ def upload_analyze(request):
         messages.info(request, f"'{label}' chương trình sẽ không lưu kết quả này!")
     
     return redirect('search')
+
+
+@login_required
+def api_upload_analyze(request):
+    """API endpoint: Upload ảnh và trả về kết quả phân tích dạng JSON"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    f = request.FILES.get('image')
+    if not f:
+        return JsonResponse({'success': False, 'error': 'No image file provided'}, status=400)
+    
+    # Validate file
+    allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if f.content_type not in allowed:
+        return JsonResponse({'success': False, 'error': 'Invalid file type. Only JPG, PNG, WebP allowed'}, status=400)
+    
+    if f.size > 10 * 1024 * 1024:
+        return JsonResponse({'success': False, 'error': 'File too large. Max 10MB'}, status=400)
+    
+    try:
+        # Read file
+        data_bytes = f.read()
+        
+        # Call Pi API
+        resp = pi_client.upload_image(data_bytes, f.name, f.content_type)
+        
+        if not resp.get('success'):
+            error_msg = resp.get('error', 'Unknown error from Pi server')
+            return JsonResponse({'success': False, 'error': error_msg}, status=500)
+        
+        # Return analysis result (same format as api_analyze_image)
+        return JsonResponse({
+            'success': True,
+            'name': resp.get('name', ''),
+            'confidence': resp.get('confidence', 0),
+            'file': resp.get('file', ''),
+            'image_url': resp.get('image_url', ''),
+        })
+        
+    except Exception as e:
+        logger.exception("Error in api_upload_analyze")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
@@ -281,6 +366,15 @@ def plant_detail(request, plant_id):
         'recent_captures': recent_captures,
         'recipes': recipes,
         'pi_base': pi_client.base_url,
+    })
+
+
+@login_required
+def test(request):
+    """Trang test - copy của search page để test các tính năng mới"""
+    return render(request, 'test.html', {
+        'pi_base': pi_client.base_url,
+        'stream_url': pi_client.get_stream_url(),
     })
 
 
@@ -632,3 +726,274 @@ def api_get_video_recording_status(request):
     """API endpoint: Lấy trạng thái recording"""
     status = pi_client.get_video_recording_status()
     return JsonResponse(status)
+
+
+# ============================================================
+# YOLO LEAF DETECTION ENDPOINTS
+# ============================================================
+
+@csrf_exempt
+@login_required
+def api_detect_leaves(request):
+    """API endpoint: Detect leaves in current stream using YOLO"""
+    
+    print("=== YOLO DETECT API CALLED - PRINT TEST ===")
+    
+    try:
+        print("Step 1: Importing YOLO detector...")
+        from .services.yolo_service import yolo_detector
+        print("Step 2: YOLO detector imported successfully")
+        
+        logger.info("=== YOLO DETECT API CALLED ===")
+        
+        # Get stream URL
+        print("Step 3: Getting stream URL...")
+        logger.info("Getting stream URL from Pi client...")
+        stream_url = pi_client.get_stream_url()
+        print(f"Step 4: Stream URL = {stream_url}")
+        logger.info(f"Stream URL: {stream_url}")
+        
+        if not stream_url:
+            print("Step 5: Stream URL is empty - returning error")
+            logger.warning("Stream URL is None or empty")
+            return JsonResponse({"success": False, "error": "Stream không khả dụng"}, status=400)
+        
+        # Get confidence threshold from request
+        confidence = float(request.GET.get('confidence', 0.5))
+        confidence = max(0.1, min(0.9, confidence))  # Clamp between 0.1-0.9
+        print(f"Step 6: Using confidence = {confidence}")
+        logger.info(f"Using confidence threshold: {confidence}")
+        
+        # Run YOLO detection
+        print("Step 7: Starting YOLO detection...")
+        logger.info("Starting YOLO detection...")
+        
+        # Use YOLO service with snapshot capture
+        print(f"Step 7a: Using Pi stream URL with snapshot capture: {stream_url}")
+        
+        result = yolo_detector.detect_leaves_from_url(stream_url, confidence)
+        print(f"Step 8: YOLO detection completed with result: {result.get('success', False) if result else 'None'}")
+        logger.info(f"YOLO detection result: {result.get('success', False) if result else 'None'}")
+        
+        print("Step 9: Returning JSON response")
+        return JsonResponse(result)
+        
+    except Exception as e:
+        print(f"EXCEPTION in api_detect_leaves: {str(e)}")
+        logger.error(f"Leaf detection API error: {str(e)}", exc_info=True)
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_crop_leaf(request):
+    """API endpoint: Crop specific leaf from stream and analyze"""
+    from .services.yolo_service import yolo_detector
+    import json
+    
+    try:
+        data = json.loads(request.body)
+        bbox = data.get('bbox')
+        
+        if not bbox:
+            return JsonResponse({"success": False, "error": "Bounding box không được cung cấp"}, status=400)
+        
+        # Validate bbox structure
+        required_keys = ['x1', 'y1', 'x2', 'y2']
+        if not all(key in bbox for key in required_keys):
+            return JsonResponse({"success": False, "error": "Bounding box không hợp lệ"}, status=400)
+        
+        # Get stream URL
+        stream_url = pi_client.get_stream_url()
+        if not stream_url:
+            return JsonResponse({"success": False, "error": "Stream không khả dụng"}, status=400)
+        
+        # Crop leaf from stream
+        crop_result = yolo_detector.crop_leaf_from_stream(stream_url, bbox)
+        
+        if not crop_result['success']:
+            return JsonResponse(crop_result, status=400)
+        
+        # Always save cropped image locally for later use
+        try:
+            import base64
+            from django.core.files.base import ContentFile
+            
+            logger.info("Saving cropped image locally...")
+            
+            # Convert base64 to bytes
+            cropped_image_data = base64.b64decode(crop_result['cropped_image_b64'])
+            
+            # Generate local filename
+            timestamp = dj_timezone.now()
+            local_filename = f"yolo_crop_{request.user.id}_{timestamp.strftime('%Y%m%d_%H%M%S')}.jpg"
+            local_path = f"yolo_crops/{timestamp:%Y/%m/%d}/{local_filename}"
+            
+            # Save to Django storage
+            saved_path = default_storage.save(local_path, ContentFile(cropped_image_data))
+            image_url = default_storage.url(saved_path)
+            
+            # Add file info to result
+            crop_result['saved_file_path'] = saved_path
+            crop_result['saved_file_url'] = image_url
+            crop_result['saved_filename'] = local_filename
+            
+            logger.info(f"Cropped image saved locally: {saved_path}")
+            
+            # If auto_analyze is True, process immediately using upload_analyze logic
+            auto_analyze = data.get('auto_analyze', False)
+            if auto_analyze:
+                logger.info("Auto-analyzing cropped leaf with upload_analyze logic...")
+                
+                # Use Pi client to upload and analyze
+                pi_filename = f"yolo_crop_{timestamp.strftime('%Y%m%d_%H%M%S')}.jpg"
+                upload_result = pi_client.upload_image(cropped_image_data, pi_filename, 'image/jpeg')
+                
+                if upload_result.get('success'):
+                    # Extract analysis results (same as upload_analyze logic)
+                    label = (upload_result.get('name') or '').strip()
+                    confidence = upload_result.get('confidence', 0)
+                    
+                    # Tìm Plant theo tên khoa học hoặc tên thường
+                    plant = Plant.objects.filter(
+                        Q(scientific_name__iexact=label) | Q(name__iexact=label)
+                    ).first()
+                    
+                    # Nếu không tìm thấy, tạo mới
+                    if not plant:
+                        plant = Plant.objects.create(
+                            scientific_name=label,
+                            name=label,
+                            should_save=True
+                        )
+                        created = True
+                    else:
+                        created = False
+                    
+                    # Save to database if plant should be saved
+                    if plant.should_save:
+                        capture_result = CaptureResult.objects.create(
+                            user=request.user,
+                            plant=plant,
+                            name=label,
+                            confidence=confidence,
+                            image_file=upload_result.get('file', ''),
+                            local_image=saved_path,
+                            success=True,
+                            source='yolo_crop',
+                            raw=upload_result,
+                        )
+                        
+                        crop_result['analysis'] = {
+                            'name': label,
+                            'confidence': confidence,
+                            'plant_id': plant.id
+                        }
+                        crop_result['saved_to_history'] = True
+                        crop_result['capture_id'] = capture_result.id
+                        crop_result['message'] = f"Đã phân tích và lưu: {label} ({confidence:.1%})"
+                    else:
+                        crop_result['analysis'] = {
+                            'name': label,
+                            'confidence': confidence,
+                            'plant_id': plant.id
+                        }
+                        crop_result['saved_to_history'] = False
+                        crop_result['message'] = f"Đã phân tích: {label} ({confidence:.1%}) - Không lưu kết quả"
+                else:
+                    crop_result['analysis_error'] = upload_result.get('error', 'Pi analysis failed')
+                    crop_result['message'] = f"Phân tích thất bại: {upload_result.get('error', 'Unknown error')}"
+                    
+        except Exception as e:
+            logger.warning(f"Image saving/analysis failed: {str(e)}")
+            crop_result['save_error'] = str(e)
+        
+        return JsonResponse(crop_result)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON data"}, status=400)
+    except Exception as e:
+        logger.error(f"Crop leaf API error: {str(e)}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"]) 
+def api_analyze_cropped_leaf(request):
+    """API endpoint: Send cropped leaf to Pi for analysis"""
+    import json
+    import base64
+    from django.core.files.base import ContentFile
+    
+    try:
+        data = json.loads(request.body)
+        image_b64 = data.get('image_b64')
+        
+        if not image_b64:
+            return JsonResponse({"success": False, "error": "Không có ảnh để phân tích"}, status=400)
+        
+        # Decode base64 image
+        try:
+            image_data = base64.b64decode(image_b64)
+        except Exception as e:
+            return JsonResponse({"success": False, "error": "Ảnh không hợp lệ"}, status=400)
+        
+        # Send to Pi for analysis (integrate with existing Pi analysis pipeline)
+        filename = f"yolo_crop_{dj_timezone.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+        
+        # Upload to Pi
+        upload_result = pi_client.upload_image(image_data, filename, 'image/jpeg')
+        
+        if not upload_result.get('success'):
+            return JsonResponse({
+                "success": False, 
+                "error": upload_result.get('error', 'Upload failed')
+            }, status=400)
+        
+        # Analyze uploaded image
+        analysis_result = pi_client.analyze_image(filename)
+        
+        if not analysis_result.get('success'):
+            return JsonResponse({
+                "success": False,
+                "error": analysis_result.get('error', 'Analysis failed')
+            }, status=400)
+        
+        # Save to database if successful and plant should be saved
+        if analysis_result.get('success') and analysis_result.get('name'):
+            try:
+                plant = Plant.objects.filter(name__iexact=analysis_result['name']).first()
+                
+                if plant and plant.should_save:
+                    # Save cropped image locally
+                    image_file = ContentFile(image_data, filename)
+                    
+                    capture = CaptureResult.objects.create(
+                        user=request.user,
+                        plant=plant,
+                        name=analysis_result['name'],
+                        confidence=analysis_result.get('confidence'),
+                        local_image=image_file,
+                        source='yolo_crop',  # New source type
+                        success=True,
+                        raw=analysis_result
+                    )
+                    
+                    analysis_result['saved'] = True
+                    analysis_result['capture_id'] = capture.id
+                else:
+                    analysis_result['saved'] = False
+                    analysis_result['reason'] = 'Plant not found or should_save=False'
+                    
+            except Exception as e:
+                logger.warning(f"Failed to save YOLO crop result: {str(e)}")
+                analysis_result['saved'] = False
+                analysis_result['save_error'] = str(e)
+        
+        return JsonResponse(analysis_result)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON data"}, status=400)
+    except Exception as e:
+        logger.error(f"Analyze cropped leaf error: {str(e)}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
