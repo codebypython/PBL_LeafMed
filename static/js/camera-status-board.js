@@ -26,12 +26,11 @@ class CameraStatusBoard {
         
         // UI settings (converted từ technical)
         this.uiSettings = {
-            zoom: 100,
+            zoom: 1.0,
             brightness: 0,
-            sharpness: 100,
-            contrast: 100,
-            saturation: 100,
-            background_blur: 0
+            sharpness: 0,
+            contrast: 0,
+            saturation: 0
         };
         
         // System info

@@ -617,10 +617,14 @@ function updateUISettingDisplay(elementId, value) {
     const valueElement = document.getElementById(elementId + 'Value');
     if (!valueElement) return;
     
-    if (elementId === 'brightness') {
-        valueElement.textContent = (val >= 0 ? '+' : '') + val.toFixed(0) + '%';
+    // Format zoom as 1.0x, 2.0x, etc.
+    if (elementId === 'zoom') {
+        valueElement.textContent = val.toFixed(1) + 'x';
+        // Update zoom quality badge
+        updateZoomQuality(val);
     } else {
-        valueElement.textContent = val.toFixed(0) + '%';
+        // Format other settings as +/- %
+        valueElement.textContent = (val >= 0 ? '+' : '') + val.toFixed(0) + '%';
     }
     
     const slider = document.getElementById(elementId);
@@ -685,7 +689,7 @@ function debouncedApplyUISetting(settingName, elementId) {
     }, 300);
 }
 
-function adjustUISetting(elementId, step) {
+function adjustUISetting(elementId, delta) {
     const element = document.getElementById(elementId);
     if (!element) {
         console.error(`[UI] Element not found: ${elementId}`);
@@ -695,9 +699,9 @@ function adjustUISetting(elementId, step) {
     const currentValue = parseFloat(element.value) || 0;
     const min = parseFloat(element.min) || 0;
     const max = parseFloat(element.max) || 100;
-    const stepValue = parseFloat(element.step) || 5;
     
-    let newValue = currentValue + (step * stepValue);
+    // delta is already the direct value to add/subtract (e.g., -5, 5, -0.1, 0.1)
+    let newValue = currentValue + delta;
     newValue = Math.max(min, Math.min(max, newValue));
     
     element.value = newValue;
@@ -733,6 +737,45 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// ============================================================
+// ZOOM QUALITY INDICATOR
+// ============================================================
+
+function updateZoomQuality(zoomValue) {
+    const zoomQualityEl = document.getElementById('zoomQuality');
+    const zoomHintEl = document.getElementById('zoomHint');
+    
+    if (!zoomQualityEl || !zoomHintEl) return;
+    
+    const zoom = parseFloat(zoomValue) || 1.0;
+    
+    if (zoom <= 1.0) {
+        zoomQualityEl.textContent = 'Tốt nhất';
+        zoomQualityEl.className = 'badge';
+        zoomQualityEl.style.backgroundColor = '#28a745';
+        zoomQualityEl.style.color = 'white';
+        zoomHintEl.textContent = '1.0x = không zoom, 2.0x = zoom 2x, 4.0x = zoom 4x';
+    } else if (zoom <= 2.0) {
+        zoomQualityEl.textContent = 'Tốt';
+        zoomQualityEl.className = 'badge';
+        zoomQualityEl.style.backgroundColor = '#17a2b8';
+        zoomQualityEl.style.color = 'white';
+        zoomHintEl.textContent = 'Chất lượng ảnh vẫn tốt ở mức zoom này';
+    } else if (zoom <= 3.0) {
+        zoomQualityEl.textContent = 'Trung bình';
+        zoomQualityEl.className = 'badge';
+        zoomQualityEl.style.backgroundColor = '#ffc107';
+        zoomQualityEl.style.color = 'black';
+        zoomHintEl.textContent = 'Chất lượng ảnh có thể giảm nhẹ';
+    } else {
+        zoomQualityEl.textContent = 'Thấp';
+        zoomQualityEl.className = 'badge';
+        zoomQualityEl.style.backgroundColor = '#dc3545';
+        zoomQualityEl.style.color = 'white';
+        zoomHintEl.textContent = 'Chất lượng ảnh sẽ giảm đáng kể ở mức zoom này';
+    }
+}
+
 // Export functions to global scope for inline event handlers
 window.toggleSidebar = toggleSidebar;
 window.showTab = showTab;
@@ -741,3 +784,4 @@ window.viewPlantDetails = viewPlantDetails;
 window.updateUISettingDisplay = updateUISettingDisplay;
 window.debouncedApplyUISetting = debouncedApplyUISetting;
 window.adjustUISetting = adjustUISetting;
+window.updateZoomQuality = updateZoomQuality;

@@ -536,19 +536,40 @@ async function refreshCameraStatus() {
             document.getElementById('statusAwbEnable').textContent = 
                 (s.AwbEnable !== undefined) ? (s.AwbEnable ? 'Bật' : 'Tắt') : '-';
             
-            // Frame rate
+            // Frame rate - hiển thị chính xác giá trị thực tế, không thêm "fps" vì HTML đã có
             const framerate = s.framerate;
-            document.getElementById('statusFps').textContent = framerate ? `${framerate} fps` : '-';
+            document.getElementById('statusFps').textContent = framerate ? `${framerate}` : '-';
             
             // Update resolution info
             if (resolutionInfo.resolution_main) {
                 const width = resolutionInfo.resolution_main[0];
                 const height = resolutionInfo.resolution_main[1];
                 document.getElementById('statusResolution').textContent = `${width} × ${height}`;
+                // Megapixels từ resolutionInfo (đã được tính từ full sensor resolution)
                 document.getElementById('statusMegapixels').textContent = 
                     resolutionInfo.megapixels ? resolutionInfo.megapixels.toFixed(2) : '-';
                 document.getElementById('statusAspectRatio').textContent = 
                     resolutionInfo.aspect_ratio || '-';
+            }
+            
+            // Update preset name - lấy từ systemInfo.preset (đã được set từ API)
+            const presetName = systemInfo.preset;
+            if (presetName) {
+                // Map preset keys to display names
+                const presetDisplayNames = {
+                    'auto': 'Tự động',
+                    'daylight': 'Ánh sáng ban ngày',
+                    'cloudy': 'Có mây',
+                    'tungsten': 'Đèn sợi đốt',
+                    'fluorescent': 'Đèn huỳnh quang',
+                    'night': 'Ban đêm',
+                    'indoor': 'Trong nhà',
+                    'outdoor': 'Ngoài trời'
+                };
+                const displayName = presetDisplayNames[presetName] || presetName;
+                document.getElementById('settingsPreset').textContent = displayName;
+            } else {
+                document.getElementById('settingsPreset').textContent = '-';
             }
         } else {
             console.warn('[refreshCameraStatus] StatusBoard not available');

@@ -17,12 +17,11 @@
 class CameraState {
     constructor() {
         this.uiSettings = {
-            zoom: 100,
+            zoom: 1.0,
             brightness: 0,
-            sharpness: 100,
-            contrast: 100,
-            saturation: 100,
-            background_blur: 0
+            sharpness: 0,
+            contrast: 0,
+            saturation: 0
         };
         this.isApplying = false;
         this.listeners = [];
@@ -159,18 +158,12 @@ class CameraUI {
             background_blur: parseFloat(uiSettings.background_blur) || 0
         };
         
-        // Xử lý conflict giữa sharpness và background_blur
-        if (normalizedSettings.sharpness >= 100) {
-            normalizedSettings.background_blur = 0;
-        }
-        
         // Update từng control
-        this.updateControl('zoom', normalizedSettings.zoom, 100, 400);
+        this.updateControl('zoom', normalizedSettings.zoom, 1, 4, false, true);
         this.updateControl('brightness', normalizedSettings.brightness, -100, 100, true);
-        this.updateControl('sharpness', normalizedSettings.sharpness, 0, 200);
-        this.updateControl('contrast', normalizedSettings.contrast, 0, 200);
-        this.updateControl('saturation', normalizedSettings.saturation, 0, 200);
-        this.updateControl('backgroundBlur', normalizedSettings.background_blur, 0, 100);
+        this.updateControl('sharpness', normalizedSettings.sharpness, -100, 100, true);
+        this.updateControl('contrast', normalizedSettings.contrast, -100, 100, true);
+        this.updateControl('saturation', normalizedSettings.saturation, -100, 100, true);
         
         // Update state
         this.state.updateUISettings(normalizedSettings);
@@ -179,7 +172,7 @@ class CameraUI {
     /**
      * Update một control cụ thể
      */
-    updateControl(elementId, value, min, max, isSigned = false) {
+    updateControl(elementId, value, min, max, isSigned = false, isZoom = false) {
         const element = this.elements[elementId];
         const valueElement = this.elements[elementId + 'Value'];
         
@@ -202,7 +195,15 @@ class CameraUI {
         
         // Update display text
         if (valueElement) {
-            if (isSigned) {
+            if (isZoom) {
+                // Format zoom as 1.0x, 2.0x, etc.
+                valueElement.textContent = clampedValue.toFixed(1) + 'x';
+                // Update zoom quality indicator
+                if (window.updateZoomQuality) {
+                    window.updateZoomQuality(clampedValue);
+                }
+            } else if (isSigned) {
+                // Format signed values as +/- %
                 valueElement.textContent = (clampedValue >= 0 ? '+' : '') + clampedValue.toFixed(0) + '%';
             } else {
                 valueElement.textContent = clampedValue.toFixed(0) + '%';

@@ -171,15 +171,15 @@
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <!-- Zoom -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🔍 Độ phóng đại: <span id="zoomValue">100%</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🔍 Độ phóng đại: <span id="zoomValue">1.0x</span> <span id="zoomQuality" class="badge" style="margin-left: 0.5rem; font-size: 0.75rem;"></span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="zoom" class="form-control" min="100" max="400" step="5" value="100" 
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', -0.1)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
+                            <input type="range" id="zoom" class="form-control" min="1" max="4" step="0.1" value="1" 
                                    oninput="updateUISettingDisplay('zoom', this.value); debouncedApplyUISetting('zoom', 'zoom');">
-                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', 0.1)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
-                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
-                            100% = không zoom, 200% = zoom 2x, 400% = zoom 4x
+                        <small id="zoomHint" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+                            1.0x = không zoom, 2.0x = zoom 2x, 4.0x = zoom 4x
                         </small>
                     </div>
                     
@@ -188,7 +188,7 @@
                         <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ sáng: <span id="brightnessValue">0%</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                        <input type="range" id="brightness" class="form-control" min="-100" max="100" step="1" value="0" 
+                        <input type="range" id="brightness" class="form-control" min="-100" max="100" step="5" value="0" 
                                    oninput="updateUISettingDisplay('brightness', this.value); debouncedApplyUISetting('brightness', 'brightness');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
@@ -196,10 +196,10 @@
                     
                     <!-- Sharpness -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ nét: <span id="sharpnessValue">100%</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ nét: <span id="sharpnessValue">0%</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('sharpness', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="sharpness" class="form-control" min="0" max="200" step="5" value="100" 
+                            <input type="range" id="sharpness" class="form-control" min="-100" max="100" step="5" value="0" 
                                    oninput="updateUISettingDisplay('sharpness', this.value); debouncedApplyUISetting('sharpness', 'sharpness');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('sharpness', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
@@ -207,10 +207,10 @@
                     
                     <!-- Contrast -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ tương phản: <span id="contrastValue">100%</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ tương phản: <span id="contrastValue">0%</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('contrast', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="contrast" class="form-control" min="0" max="200" step="5" value="100" 
+                            <input type="range" id="contrast" class="form-control" min="-100" max="100" step="5" value="0" 
                                    oninput="updateUISettingDisplay('contrast', this.value); debouncedApplyUISetting('contrast', 'contrast');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('contrast', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
@@ -218,25 +218,13 @@
                     
                     <!-- Saturation -->
                     <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ bão hòa màu: <span id="saturationValue">100%</span></label>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Độ bão hòa màu: <span id="saturationValue">0%</span></label>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('saturation', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="saturation" class="form-control" min="0" max="200" step="5" value="100" 
+                            <input type="range" id="saturation" class="form-control" min="-100" max="100" step="5" value="0" 
                                    oninput="updateUISettingDisplay('saturation', this.value); debouncedApplyUISetting('saturation', 'saturation');">
                             <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('saturation', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
                         </div>
-                    </div>
-                    
-                    <!-- Background Blur -->
-                    <div>
-                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Làm mờ vật thể phụ: <span id="backgroundBlurValue">0%</span></label>
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('backgroundBlur', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
-                            <input type="range" id="backgroundBlur" class="form-control" min="0" max="100" step="5" value="0" 
-                                   oninput="updateUISettingDisplay('backgroundBlur', this.value); debouncedApplyUISetting('background_blur', 'backgroundBlur');">
-                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('backgroundBlur', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
-                        </div>
-                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Giảm độ nét vùng nền để làm nổi bật chủ thể</small>
                     </div>
                 </div>
                 
