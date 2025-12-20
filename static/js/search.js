@@ -484,7 +484,8 @@ async function refreshCameraStatus() {
             
             // Format preset: Hiển thị tên preset thay vì key
             let presetDisplay = '-';
-            if (systemInfo.preset && systemInfo.preset !== '-') {
+            const presetKey = systemInfo.preset;
+            if (presetKey && presetKey !== '-' && presetKey !== 'unknown') {
                 // Map preset key sang tên hiển thị
                 const presetNames = {
                     'auto': 'Tự động (Mặc định)',
@@ -492,6 +493,7 @@ async function refreshCameraStatus() {
                     'cloudy': 'Có mây',
                     'night': 'Ban đêm',
                     'indoor': 'Trong nhà',
+                    'outdoor': 'Ngoài trời',
                     'sport': 'Thể thao',
                     'portrait': 'Chân dung',
                     'document': 'Tài liệu',
@@ -501,7 +503,7 @@ async function refreshCameraStatus() {
                     'leaf_macro': 'Lá cây - Cận cảnh',
                     'leaf_shadow': 'Lá cây - Bóng râm'
                 };
-                presetDisplay = presetNames[systemInfo.preset] || systemInfo.preset;
+                presetDisplay = presetNames[presetKey] || presetKey;
             }
             document.getElementById('settingsPreset').textContent = presetDisplay;
             
@@ -558,9 +560,14 @@ async function refreshCameraStatus() {
             document.getElementById('statusAwbEnable').textContent = 
                 (s.AwbEnable !== undefined) ? (s.AwbEnable ? 'Bật' : 'Tắt') : '-';
             
-            // Frame rate - HTML đã có "fps" rồi, chỉ cần số
-            const framerate = s.framerate;
-            document.getElementById('statusFps').textContent = framerate ? `${framerate}` : '-';
+            // Frame rate - QUAN TRỌNG: Ưu tiên lấy từ technical settings (giá trị thực từ camera)
+            // Nếu không có, lấy từ resolution info (max_fps)
+            let framerate = s.framerate;
+            if (!framerate && resolutionInfo.max_fps) {
+                framerate = resolutionInfo.max_fps;
+            }
+            // Hiển thị với "fps" (HTML đã có text "fps" rồi, chỉ cần số)
+            document.getElementById('statusFps').textContent = framerate ? `${framerate} fps` : '-';
             
             // Update resolution info
             if (resolutionInfo.resolution_main) {
@@ -587,4 +594,18 @@ async function refreshCameraStatus() {
         console.error('Error refreshing camera status:', error);
     }
 }
+
+// Export functions to global scope
+window.getCsrfToken = getCsrfToken;
+window.checkPiStatus = checkPiStatus;
+window.pauseStream = pauseStream;
+window.resumeStream = resumeStream;
+window.restartCamera = restartCamera;
+window.reloadModel = reloadModel;
+window.refreshCameraStatus = refreshCameraStatus;
+window.loadUnifiedPresets = loadUnifiedPresets;
+window.handlePresetChange = handlePresetChange;
+window.applySelectedPreset = applySelectedPreset;
+window.deleteSelectedPreset = deleteSelectedPreset;
+window.saveCurrentPreset = saveCurrentPreset;
 

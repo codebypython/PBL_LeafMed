@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/search.css' %}">
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Tra cứu thực vật</h1>
+        <p class="card-subtitle">Xem luồng video trực tiếp từ camera hoặc tải ảnh từ máy tính để nhận diện</p>
+    </div>
+    
+    <!-- Status indicator -->
+    <div id="piStatus" class="status-indicator" style="margin-bottom: 1rem; padding: 0.5rem; border-radius: var(--border-radius-sm); background: var(--bg-secondary);">
+        <span id="statusText">Đang kiểm tra trạng thái...</span>
+    </div>
+    
+    <button class="sidebar-toggle" onclick="toggleSidebar()" id="sidebarToggle">⚙️ Điều khiển</button>
+    
+    <div class="main-layout">
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Tabs để chuyển đổi giữa Camera và Upload -->
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 2px solid var(--border-color);">
+                <button class="tab-btn active" onclick="showTab('camera')" id="tab-camera">📹 Camera</button>
+                <button class="tab-btn" onclick="showTab('upload')" id="tab-upload">📁 Tải ảnh lên</button>
+            </div>
+            
+            <!-- Tab Camera -->
+            <div id="camera-tab" class="tab-content">
+                <div class="stream-container" style="position: relative;">
+                    <div class="stream-wrapper">
+                        <img src="{{ stream_url }}" alt="Pi Stream" class="stream-image" id="streamImage">
+                        <canvas id="yoloOverlayCanvas" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
+                        <div class="stream-overlay" id="streamOverlay">
+                            <div class="spinner"></div>
+                            <p style="margin-top: 1rem; color: white;">Đang xử lý...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap;">
+                    <form method="post" action="#" id="captureForm" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-lg" id="captureBtn">
+                            📸 Chụp ảnh và phân tích
+                        </button>
+                    </form>
+                    <button class="btn btn-secondary" onclick="pauseStream()" id="pauseBtn">⏸️ Tạm dừng</button>
+                    <button class="btn btn-secondary" onclick="resumeStream()" id="resumeBtn" style="display: none;">▶️ Tiếp tục</button>
+                </div>        
+            </div>
+            
+            <!-- Tab Upload -->
+            <div id="upload-tab" class="tab-content" style="display: none;">
+                <div class="upload-container">
+                    <form method="post" action="{% url 'upload_analyze' %}" enctype="multipart/form-data" id="uploadForm">
+                        {% csrf_token %}
+                        <div class="upload-area" id="uploadArea">
+                            <input type="file" name="image" id="imageInput" accept="image/jpeg,image/jpg,image/png,image/webp" required style="display: none;">
+                            <div class="upload-placeholder">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">📷</div>
+                                <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">Kéo thả ảnh vào đây hoặc click để chọn</p>
+                                <p style="color: var(--text-muted); font-size: 0.9rem;">Hỗ trợ: JPG, PNG, WebP (tối đa 10MB)</p>
+                            </div>
+                            <img id="previewImage" style="display: none; max-width: 100%; max-height: 400px; border-radius: var(--border-radius-sm); margin-top: 1rem;">
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn" disabled>
+                                🔍 Phân tích ảnh
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls Sidebar -->
+        <div class="controls-sidebar" id="controlsSidebar">
+            <h3 style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <span>⚙️ Điều khiển Camera</span>
+                <button onclick="toggleSidebar()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; display: none;" id="closeSidebar">×</button>
+            </h3>
+            
+            <!-- Preset Selector (Unified Dropdown) -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-primary); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+                <h4 style="margin-bottom: 0.75rem; font-size: 1rem;">Chế độ nhanh (Preset)</h4>
+                
+                <!-- Unified Preset Dropdown -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; display: block;">Chọn preset:</label>
+                    <select id="unifiedPresetSelect" class="form-control" style="margin-bottom: 0.5rem; font-size: 0.9rem;" onchange="handlePresetChange()">
+                        <optgroup label="🔧 Mặc định" id="defaultPresetsGroup">
+                            <option value="system:auto">🔄 Tự động (Mặc định)</option>
+                        </optgroup>
+                        <optgroup label="🌿 Chụp lá cây" id="leafPresetsGroup">
+                            <option value="system:leaf_sharp">🍃 Lá cây - Sắc nét</option>
+                            <option value="system:leaf_vivid">🌈 Lá cây - Màu rực</option>
+                            <option value="system:leaf_macro">🔍 Lá cây - Cận cảnh</option>
+                            <option value="system:leaf_shadow">🌑 Lá cây - Bóng râm</option>
+                        </optgroup>
+                        <optgroup label="☀️ Cơ bản" id="basicPresetsGroup">
+                            <option value="system:daylight">☀️ Ban ngày</option>
+                            <option value="system:cloudy">☁️ Trời nhiều mây</option>
+                            <option value="system:indoor">🏠 Trong nhà</option>
+                            <option value="system:night">🌙 Ban đêm</option>
+                        </optgroup>
+                        <optgroup label="📷 Chuyên dụng" id="specialPresetsGroup">
+                            <option value="system:sport">⚡ Thể thao</option>
+                            <option value="system:portrait">👤 Chân dung</option>
+                            <option value="system:document">📄 Tài liệu</option>
+                            <option value="system:security">🔒 An ninh</option>
+                        </optgroup>
+                        <optgroup label="👤 Của tôi" id="userPresetsGroup">
+                            <!-- User presets will be loaded here -->
+                        </optgroup>
+                    </select>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <button class="btn btn-sm btn-success" onclick="applySelectedPreset()" style="flex: 1; font-size: 0.85rem;">✅ Áp dụng</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteSelectedPreset()" style="font-size: 0.85rem;" id="deletePresetBtn" disabled>🗑️ Xóa</button>
+                    </div>
+                </div>
+                
+                <p id="presetStatus" style="color: var(--text-muted); font-size: 0.85rem; margin: 0;"></p>
+            </div>
+            
+            <!-- YOLO Leaf Detection Controls -->
+            <div class="yolo-controls-section">
+                <h4>🤖 Nhận diện lá tự động (AI)</h4>
+                
+                <div class="yolo-confidence-control">
+                    <label>Độ tin cậy tối thiểu: <span id="confidenceValue">35%</span></label>
+                    <input type="range" id="yoloConfidence" min="10" max="90" value="35" 
+                           oninput="updateConfidenceDisplay(this.value)" class="form-control">
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-primary" id="yoloToggleBtn" onclick="toggleYOLODetection()" style="flex: 1; font-size: 0.85rem;">
+                        🔍 Bắt đầu quét lá
+                    </button>
+                </div>
+                
+                <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.5rem;">
+                    💡 Nhấn vào khung xanh trên video để cắt và phân tích lá
+                </small>
+            </div>
+            
+            <!-- Save Current Settings -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-primary); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+                <h4 style="margin-bottom: 0.75rem; font-size: 1rem;">Lưu thông số hiện tại</h4>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <input type="text" id="presetNameInput" class="form-control" placeholder="Tên preset..." style="flex: 1; font-size: 0.9rem;">
+                    <button class="btn btn-sm btn-primary" onclick="saveCurrentPreset()" style="font-size: 0.85rem;">💾 Lưu</button>
+                </div>
+                <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="setAsDefault">
+                    <span>Đặt làm mặc định</span>
+                </label>
+            </div>
+            
+            <!-- Resolution Settings -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-primary); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+                <h4 style="margin-bottom: 0.75rem; font-size: 1rem;">📐 Độ phân giải</h4>
+                <div style="margin-bottom: 0.5rem;">
+                    <label style="font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Chọn độ phân giải:</label>
+                    <select id="resolutionProfile" class="form-control" style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                        <option value="">Đang tải...</option>
+                    </select>
+                    <div id="resolutionInfo" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--border-radius-sm);">
+                        <div><strong>Hiện tại:</strong> <span id="currentResolution">-</span></div>
+                        <div><strong>Megapixels:</strong> <span id="currentMegapixels">-</span> MP</div>
+                        <div><strong>Max FPS:</strong> <span id="currentMaxFps">-</span> fps</div>
+                    </div>
+                    <button class="btn btn-sm btn-primary" onclick="changeResolution()" style="width: 100%; font-size: 0.85rem;">🔄 Áp dụng độ phân giải</button>
+                    <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+                        ⚠️ Thay đổi độ phân giải sẽ khởi động lại camera
+                    </small>
+                </div>
+            </div>
+            
+            <!-- Manual Settings - User-Friendly UI -->
+            <div style="margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 0.75rem; font-size: 1rem;">Điều chỉnh hình ảnh</h4>
+                
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- Zoom: 1x đến 4x (giống các ứng dụng camera) -->
+                    <div>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🔍 Độ phóng đại: <span id="zoomValue">1.0x</span> <span id="zoomQuality" style="font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 3px; background: var(--accent-success); color: white;">Tốt nhất</span></label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', -0.1)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
+                            <input type="range" id="zoom" class="form-control" min="1" max="4" step="0.1" value="1" 
+                                   oninput="updateUISettingDisplay('zoom', this.value); updateZoomQuality(this.value); debouncedApplyUISetting('zoom', 'zoom');">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('zoom', 0.1)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
+                        </div>
+                        <small id="zoomHint" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+                            Digital zoom: Chất lượng tốt nhất ở 1x-1.5x. Nên đặt lá gần camera thay vì zoom.
+                        </small>
+                    </div>
+                    
+                    <!-- Brightness: -100% đến +100% với 0% = mặc định -->
+                    <div>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">☀️ Độ sáng: <span id="brightnessValue">0%</span></label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
+                            <input type="range" id="brightness" class="form-control" min="-100" max="100" step="5" value="0" 
+                                   oninput="updateUISettingDisplay('brightness', this.value); debouncedApplyUISetting('brightness', 'brightness');">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('brightness', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
+                        </div>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">0% = mặc định, -100% = rất tối, +100% = rất sáng</small>
+                    </div>
+                    
+                    <!-- Sharpness: -100% đến +100% với 0% = mặc định -->
+                    <div>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🔎 Độ nét: <span id="sharpnessValue">0%</span></label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('sharpness', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
+                            <input type="range" id="sharpness" class="form-control" min="-100" max="100" step="5" value="0" 
+                                   oninput="updateUISettingDisplay('sharpness', this.value); debouncedApplyUISetting('sharpness', 'sharpness');">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('sharpness', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
+                        </div>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">0% = mặc định. Hiệu ứng rõ nhất khi chụp ảnh.</small>
+                    </div>
+                    
+                    <!-- Contrast: -100% đến +100% với 0% = mặc định -->
+                    <div>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🎨 Độ tương phản: <span id="contrastValue">0%</span></label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('contrast', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
+                            <input type="range" id="contrast" class="form-control" min="-100" max="100" step="5" value="0" 
+                                   oninput="updateUISettingDisplay('contrast', this.value); debouncedApplyUISetting('contrast', 'contrast');">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('contrast', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
+                        </div>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">0% = mặc định, -100% = phẳng, +100% = cao</small>
+                    </div>
+                    
+                    <!-- Saturation: -100% đến +100% với 0% = mặc định -->
+                    <div>
+                        <label style="font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">🌈 Độ bão hòa màu: <span id="saturationValue">0%</span></label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('saturation', -5)" style="font-size: 0.85rem; min-width: 2rem;">-</button>
+                            <input type="range" id="saturation" class="form-control" min="-100" max="100" step="5" value="0" 
+                                   oninput="updateUISettingDisplay('saturation', this.value); debouncedApplyUISetting('saturation', 'saturation');">
+                            <button class="btn btn-sm btn-secondary" onclick="adjustUISetting('saturation', 5)" style="font-size: 0.85rem; min-width: 2rem;">+</button>
+                        </div>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">0% = mặc định, -100% = đen trắng, +100% = màu đậm</small>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                    <button class="btn btn-sm btn-secondary" onclick="loadUISettings()" style="flex: 1; font-size: 0.85rem;">📥 Tải thông số</button>
+                    <button class="btn btn-sm btn-secondary" onclick="resetToDefault()" style="flex: 1; font-size: 0.85rem;">🔄 Mặc định</button>
+                </div>
+            </div>
+            
+            <!-- System Control -->
+            <div style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-primary); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+                <h4 style="margin-bottom: 0.75rem; font-size: 1rem;">Điều khiển hệ thống</h4>
+                <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                    <button class="btn btn-sm btn-warning" onclick="restartCamera()" style="font-size: 0.85rem;">🔄 Khởi động lại Camera</button>
+                    <button class="btn btn-sm btn-warning" onclick="reloadModel()" style="font-size: 0.85rem;">🔄 Tải lại Model</button>
+                </div>
+            </div>
+            
+            <!-- Current Settings Info (Expanded) -->
+            <div style="padding: 1rem; background: var(--bg-primary); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); max-height: 70vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h4 style="margin: 0; font-size: 1rem;">Trạng thái Camera</h4>
+                    <button class="btn btn-sm btn-secondary" onclick="refreshCameraStatus()" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">🔄</button>
+                </div>
+                
+                <!-- System Status -->
+                <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                    <h5 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--primary);">Hệ thống</h5>
+                <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Trạng thái:</strong> <span id="settingsState">-</span></p>
+                <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Preset:</strong> <span id="settingsPreset">-</span></p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Chế độ:</strong> <span id="settingsMode">-</span></p>
+            </div>
+                
+                <!-- Resolution Info -->
+                <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                    <h5 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--primary);">Độ phân giải</h5>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Kích thước:</strong> <span id="statusResolution">-</span></p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Megapixels:</strong> <span id="statusMegapixels">-</span> MP</p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Frame Rate:</strong> <span id="statusFps">-</span></p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Tỷ lệ khung hình:</strong> <span id="statusAspectRatio">-</span></p>
+        </div>
+                
+                <!-- Exposure Settings -->
+                <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                    <h5 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--primary);">Phơi sáng</h5>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>ISO (AnalogueGain):</strong> <span id="statusAnalogueGain">-</span></p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Thời gian phơi sáng:</strong> <span id="statusExposureTime">-</span></p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Bù phơi sáng (EV):</strong> <span id="statusExposureValue">-</span></p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Tự động phơi sáng:</strong> <span id="statusAeEnable">-</span></p>
+                </div>
+                
+                <!-- Image Quality Settings -->
+                <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                    <h5 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--primary);">Chất lượng hình ảnh</h5>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Độ tương phản:</strong> <span id="statusContrast">-</span></p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Độ bão hòa:</strong> <span id="statusSaturation">-</span></p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Độ nét:</strong> <span id="statusSharpness">-</span></p>
+                    <p style="font-size: 0.85rem; margin: 0.25rem 0;"><strong>Cân bằng trắng tự động:</strong> <span id="statusAwbEnable">-</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+  
+  <script src="{% static 'js/camera-status-board.js' %}"></script>
+  <script src="{% static 'js/search.js' %}"></script>
+  <script src="{% static 'js/camera-controls.js' %}"></script>
+  <script src="{% static 'js/camera-ui-settings.js' %}"></script>
+  <script src="{% static 'js/search-page.js' %}"></script>
+  <script src="{% static 'js/yolo-detection.js' %}"></script>
+  <script>
+    // Global configuration - Pass Django template variables to JavaScript
+    window.PI_BASE_URL = '{{ pi_base }}';
+    window.STREAM_URL = '{{ stream_url }}';
+    
+    // Kiểm tra trạng thái khi load
+    checkPiStatus();
+    setInterval(checkPiStatus, 30000);
+    loadUnifiedPresets(); // Load unified presets khi trang load
+    
+    // Load camera settings CHỈ MỘT LẦN khi trang load
+    // KHÔNG auto-refresh - theo Optimistic Update pattern
+    setTimeout(async () => {
+        if (window.CameraStatusBoard) {
+            await window.CameraStatusBoard.loadFromCamera();
+            refreshCameraStatus();
+        } else {
+            refreshCameraStatus();
+        }
+    }, 500);
+    
+    // Load resolution profiles khi trang load
+    if (window.loadResolutionProfiles) {
+        setTimeout(() => {
+            loadResolutionProfiles();
+        }, 500); // Đợi camera-controls.js khởi tạo xong
+    }
+    
+    // Initialize YOLO detector when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize YOLO detector
+        window.yoloDetector = new YOLOLeafDetector('streamImage', 'yoloOverlayCanvas');
+    });
+    
+    // Update confidence display
+    function updateConfidenceDisplay(value) {
+        document.getElementById('confidenceValue').textContent = value + '%';
+        if (window.yoloDetector) {
+            window.yoloDetector.setConfidence(value / 100);
+            }
+    }
+</script>
+
+<!-- Analysis Result Panel -->
+<div class="analysis-panel-overlay" id="analysisPanel">
+    <div class="analysis-panel">
+        <div class="analysis-panel-header">
+            <h2>
+                <span>🔍</span>
+                <span>Kết quả phân tích</span>
+            </h2>
+            <button class="analysis-panel-close" onclick="closeAnalysisPanel()" aria-label="Đóng">×</button>
+        </div>
+        <div class="analysis-panel-body" id="analysisPanelBody">
+            <!-- Content will be populated by JavaScript -->
+        </div>
+        <div class="analysis-panel-footer">
+            <button class="btn btn-secondary" onclick="closeAnalysisPanel()">Đóng</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
